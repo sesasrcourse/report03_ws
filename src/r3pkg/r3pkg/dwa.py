@@ -3,8 +3,8 @@ from .utils import Differential_drive_robot, normalize_angle, normalize, calc_ne
 
 # DWA
 class DWA():
+                #  dt = 0.1,
     def __init__(self,
-                 dt = 0.1,
                  sim_time = 2.0,
                  time_granularity = 0.1,
                  v_samples = 10,
@@ -18,8 +18,9 @@ class DWA():
                  **kwargs
                  ):
 
-        self.dt = dt
+        # self.dt = dt
         self.sim_step = round(sim_time / time_granularity)
+        self.time_granularity = time_granularity
         self.robot = Differential_drive_robot(**kwargs)
         self.obstacles = obstacles_map 
         self.goal_dist_tol = goal_dist_tol
@@ -38,51 +39,51 @@ class DWA():
         self.feedback_rate = 50
         self.obst_tolerance = 0.5
 
-    def go_to_pose(self, goal_pose):
-        """
-        Assign a target goal to the DWA controller.
-        Compute commands until goal is reached.
-        Provide intermediate feedback on the navigation task.
-        """
-        if goal_pose is list:
-            goal_pose = np.array(goal_pose)
+    # def go_to_pose(self, goal_pose):
+    #     """
+    #     Assign a target goal to the DWA controller.
+    #     Compute commands until goal is reached.
+    #     Provide intermediate feedback on the navigation task.
+    #     """
+    #     if goal_pose is list:
+    #         goal_pose = np.array(goal_pose)
 
-        success = False
-        dist_to_goal = np.linalg.norm(self.robot.pose[0:2] - goal_pose)
+    #     success = False
+    #     dist_to_goal = np.linalg.norm(self.robot.pose[0:2] - goal_pose)
 
-        print("Initial distance to goal: ", dist_to_goal)
-        print("Initial Robot pose: ", self.robot.pose)
+    #     print("Initial distance to goal: ", dist_to_goal)
+    #     print("Initial Robot pose: ", self.robot.pose)
 
-        steps = 1
-        while steps <= self.max_num_steps:
-            # 1. Check if Goal reached
-            dist_to_goal = np.linalg.norm(self.robot.pose[0:2] - goal_pose)
-            if dist_to_goal < self.goal_dist_tol:
-                success = True
-                print("Goal reached!")
-                break
+    #     steps = 1
+    #     while steps <= self.max_num_steps:
+    #         # 1. Check if Goal reached
+    #         dist_to_goal = np.linalg.norm(self.robot.pose[0:2] - goal_pose)
+    #         if dist_to_goal < self.goal_dist_tol:
+    #             success = True
+    #             print("Goal reached!")
+    #             break
 
-            # 2. Get new observations for obstacles is needed
-            # no lidar used here
+    #         # 2. Get new observations for obstacles is needed
+    #         # no lidar used here
 
-            # 3. Compute command for the robot with DWA controller
-            u = self.compute_cmd(goal_pose, self.robot.pose, self.obstacles)
+    #         # 3. Compute command for the robot with DWA controller
+    #         u = self.compute_cmd(goal_pose, self.robot.pose, self.obstacles)
 
-            # 4. Send the command or update the robot pose
-            pose = self.robot.update_state(u, self.dt)
+    #         # 4. Send the command or update the robot pose
+    #         pose = self.robot.update_state(u, self.dt)
             
-            # 5. Provide intermediate task feedback
-            if steps % self.feedback_rate == 0:
-                dist_to_goal = np.linalg.norm(self.robot.pose[0:2] - goal_pose)
-                print("Current distance to goal ", dist_to_goal, " at step ", steps)
-                print("Current Robot pose: ", pose)
+    #         # 5. Provide intermediate task feedback
+    #         if steps % self.feedback_rate == 0:
+    #             dist_to_goal = np.linalg.norm(self.robot.pose[0:2] - goal_pose)
+    #             print("Current distance to goal ", dist_to_goal, " at step ", steps)
+    #             print("Current Robot pose: ", pose)
 
-            steps += 1
+    #         steps += 1
 
-        if steps > self.max_num_steps:
-            print("Timeout! Goal not reached.")
+    #     if steps > self.max_num_steps:
+    #         print("Timeout! Goal not reached.")
 
-        return success, self.robot.trajectory
+    #     return success, self.robot.trajectory
     
     def compute_cmd(self, goal_pose, robot_state, obstacles):
         """
@@ -131,9 +132,9 @@ class DWA():
         sim_paths[:, 0] = pose.copy()
 
         for i in range(1, self.sim_step):
-            sim_paths[:, i, 0] = sim_paths[:, i - 1, 0] + u[:, 0] * np.cos(sim_paths[:, i - 1, 2]) * self.dt
-            sim_paths[:, i, 1] = sim_paths[:, i - 1, 1] + u[:, 0] * np.sin(sim_paths[:, i - 1, 2]) * self.dt
-            sim_paths[:, i, 2] = sim_paths[:, i - 1, 2] + u[:, 1] * self.dt
+            sim_paths[:, i, 0] = sim_paths[:, i - 1, 0] + u[:, 0] * np.cos(sim_paths[:, i - 1, 2]) * self.time_granularity
+            sim_paths[:, i, 1] = sim_paths[:, i - 1, 1] + u[:, 0] * np.sin(sim_paths[:, i - 1, 2]) * self.time_granularity
+            sim_paths[:, i, 2] = sim_paths[:, i - 1, 2] + u[:, 1] * self.time_granularity
 
         return sim_paths
 
@@ -142,8 +143,8 @@ class DWA():
         Calculate the dynamic window composed of reachable linear velocity and angular velocity according to robot's kinematic limits.
         """
         # linear velocity
-        min_vel = robot_vel[0] - self.dt * self.robot.max_linear_acc
-        max_vel = robot_vel[0] + self.dt * self.robot.max_linear_acc
+        min_vel = robot_vel[0] - self.time_granularity * self.robot.max_linear_acc
+        max_vel = robot_vel[0] + self.time_granularity * self.robot.max_linear_acc
         # minimum
         if min_vel < self.robot.min_lin_vel:
             min_vel = self.robot.min_lin_vel
@@ -152,8 +153,8 @@ class DWA():
             max_vel = self.robot.max_lin_vel
 
         # angular velocity
-        min_ang_vel = robot_vel[1] - self.dt * self.robot.max_ang_acc
-        max_ang_vel = robot_vel[1] + self.dt * self.robot.max_ang_acc
+        min_ang_vel = robot_vel[1] - self.time_granularity * self.robot.max_ang_acc
+        max_ang_vel = robot_vel[1] + self.time_granularity * self.robot.max_ang_acc
         # minimum
         if min_ang_vel < self.robot.min_ang_vel:
             min_ang_vel = self.robot.min_ang_vel
@@ -171,6 +172,7 @@ class DWA():
         """
         # detect nearest obstacle
         nearest_obs = calc_nearest_obs(robot_pose, obstacles)
+        # nearest_obs = np.array([1000, 1000])
 
         # Compute the scores for the generated path
         # (1) heading_angle and goal distance
@@ -244,7 +246,8 @@ class DWA():
                
         return score_obstacle
 
-
-
-
-
+def motion_model(state, u, dt):
+    x = state[0] + u[:, 0] * np.cos(state[2]) * dt
+    y = state[1] + u[:, 0] * np.sin(state[2]) * dt
+    th = state[2] + u[:, 1] * dt
+    return np.array([x, y, th])
