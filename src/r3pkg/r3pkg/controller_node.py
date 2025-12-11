@@ -10,7 +10,7 @@ from geometry_msgs.msg import Point, Quaternion, Twist
 import math
 from .dwa import DWA, motion_model
 from rclpy.qos import qos_profile_sensor_data
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 
 
 
@@ -70,6 +70,7 @@ class ControllerNode(Node):
         self.goal_pub = self.create_publisher(Marker, '/goal_marker', 10)
         self.goal_pub_timer = self.create_timer(0.1, self.goal_callback)
 
+        self.filter_scan_pub = self.create_publisher(MarkerArray, '/filter_scan', 10)
         if self.simulation:
             self.lidar_subscriber = self.create_subscription(LaserScan, '/scan', self.lidar_callback, 10)
         else:
@@ -115,13 +116,13 @@ class ControllerNode(Node):
         goal.pose.orientation.z = 0.0
         goal.pose.orientation.w = 1.0
 
-        goal.scale.x = 1.0
-        goal.scale.y = 1.0
-        goal.scale.z = 1.0
+        goal.scale.x = 0.1
+        goal.scale.y = 0.1
+        goal.scale.z = 0.1
         goal.color.r = 0.0
         goal.color.g = 1.0
         goal.color.b = 0.0
-        goal.color.a = 1.0   # Don't forget to set the alpha!
+        goal.color.a = 0.5   # Don't forget to set the alpha!
         
         self.goal_pub.publish(goal)
 
@@ -163,6 +164,38 @@ class ControllerNode(Node):
         # Implement a safety mechanism to stop the robot and avoid collisions.
         if np.any(np.array(min_ranges) < self.collision_tol):
             self.stop_flag = True
+
+        # FILTER SCAN MARKER ARRAY 
+        markers = []
+        for i, (r, a) in enumerate(zip(min_ranges, min_angles)):
+            m = Marker()
+            m.header.frame_id = "base_scan"
+            # goal.header.stamp = rclp Time.now()
+            m.ns = "filter_scan"
+            m.id = i
+            m.type = Marker.SPHERE
+            m.action = Marker.ADD
+            m.pose.position.x = r * np.cos(a)
+            m.pose.position.y = r * np.sin(a)
+            m.pose.position.z = 0.0
+            m.pose.orientation.x = 0.0
+            m.pose.orientation.y = 0.0
+            m.pose.orientation.z = 0.0
+            m.pose.orientation.w = 1.0
+
+            m.scale.x = 0.05
+            m.scale.y = 0.05
+            m.scale.z = 0.05
+            m.color.r = i/(len(min_ranges)-1)*1.0
+            m.color.g = (1-i/(len(min_ranges)-1))*1.0
+            m.color.b = 0.0
+            m.color.a = 1.0   # Don't forget to set the alpha!
+            m.lifetime.sec = 1 # before the marker gets deleted
+            markers.append(m)
+        # if len(markers) != 0:
+        #     self.get_logger().info("I SHOULD GENEREATE MARKERS")
+        self.filter_scan_pub.publish(MarkerArray(markers=markers))
+
         
 
 def main(args=None):
