@@ -10,6 +10,8 @@ from geometry_msgs.msg import Point, Quaternion, Twist
 import math
 from .dwa import DWA, motion_model
 from rclpy.qos import qos_profile_sensor_data
+from visualization_msgs.msg import Marker
+
 
 
 class ControllerNode(Node):
@@ -55,6 +57,7 @@ class ControllerNode(Node):
         # let's use this at the beginning 
         # static case
         self.goal_pose = np.array([-1.5 , 0.0])
+
         self.goal_reached = False
         self.stop_flag = False
 
@@ -63,6 +66,9 @@ class ControllerNode(Node):
         # PUBS & SUBS & TIMERS
         self.pub_vel = self.create_publisher(Twist, '/cmd_vel', 10)
         self.control_timer = self.create_timer(1.0/self.control_freq, self.control_callback)
+
+        self.goal_pub = self.create_publisher(Marker, '/goal_marker', 10)
+        self.goal_pub_timer = self.create_timer(0.1, self.goal_callback)
 
         if self.simulation:
             self.lidar_subscriber = self.create_subscription(LaserScan, '/scan', self.lidar_callback, 10)
@@ -91,6 +97,33 @@ class ControllerNode(Node):
             msg.angular.z = 0.0
 
         self.pub_vel.publish(msg)
+
+    def goal_callback(self):
+        goal = Marker()
+            
+        goal.header.frame_id = "odom"
+        # goal.header.stamp = rclp Time.now()
+        goal.ns = "basic_shapes"
+        goal.id = 0
+        goal.type = Marker.CUBE
+        goal.action = Marker.ADD
+        goal.pose.position.x = self.goal_pose[0]
+        goal.pose.position.y = self.goal_pose[1]
+        goal.pose.position.z = 0.0
+        goal.pose.orientation.x = 0.0
+        goal.pose.orientation.y = 0.0
+        goal.pose.orientation.z = 0.0
+        goal.pose.orientation.w = 1.0
+
+        goal.scale.x = 1.0
+        goal.scale.y = 1.0
+        goal.scale.z = 1.0
+        goal.color.r = 0.0
+        goal.color.g = 1.0
+        goal.color.b = 0.0
+        goal.color.a = 1.0   # Don't forget to set the alpha!
+        
+        self.goal_pub.publish(goal)
 
     def lidar_callback(self, msg : LaserScan): 
         # Remove NaN, Inf or irregular values. Assign the minimum value of the LiDAR measurements to NaNs and the maximum to Inf.
