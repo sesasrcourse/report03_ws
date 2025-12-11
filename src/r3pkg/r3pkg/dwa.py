@@ -14,7 +14,7 @@ class DWA():
                  weight_angle = 0.04,
                  weight_vel = 0.2,
                  weight_obs = 0.1,
-                 obstacles_map = None, # A list of obstacles poses in the map # TO DO: accept a gridmap and use local map
+                #  obstacles_map = None, # A list of obstacles poses in the map # TO DO: accept a gridmap and use local map
                  **kwargs
                  ):
 
@@ -22,7 +22,7 @@ class DWA():
         self.sim_step = round(sim_time / time_granularity)
         self.time_granularity = time_granularity
         self.robot = Differential_drive_robot(**kwargs)
-        self.obstacles = obstacles_map 
+        # self.obstacles = obstacles_map 
         self.goal_dist_tol = goal_dist_tol
         self.collision_tol = collision_tol
 
@@ -247,7 +247,7 @@ class DWA():
         return score_obstacle
 
 def motion_model(state, u, dt):
-    x = state[0] + u[:, 0] * np.cos(state[2]) * dt
-    y = state[1] + u[:, 0] * np.sin(state[2]) * dt
-    th = state[2] + u[:, 1] * dt
+    x = state[0] + u[0] * np.cos(state[2]) * dt
+    y = state[1] + u[0] * np.sin(state[2]) * dt
+    th = state[2] + u[1] * dt
     return np.array([x, y, th])

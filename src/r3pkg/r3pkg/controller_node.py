@@ -9,6 +9,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point, Quaternion, Twist
 import math
 from .dwa import DWA, motion_model
+from rclpy.qos import qos_profile_sensor_data
 
 
 class ControllerNode(Node):
@@ -18,8 +19,17 @@ class ControllerNode(Node):
         self.get_logger().debug("ALWAYS DEBUG FOR INFORMATION")
         self.get_logger().debug(f"parameter: `use_sim_time`: {self.get_parameter('use_sim_time').get_parameter_value().bool_value}")
         
+        self.declare_parameter('control_freq', 15.0)
+        self.control_freq = self.get_parameter('control_freq').value
+
+        self.declare_parameter('simulation', True)
+        self.simulation = self.get_parameter('simulation').value
         
         self.state = np.array([0.0, 0.0, 0.0]) # x y th
+        self.MIN_SCAN_VALUE = 0.12
+        self.MAX_SCAN_VALUE = 3.5 
+        self.num_ranges = 30 # number of obstacle points to consider
+        self.collision_tol = 0.2
         
         self.dwa = DWA(
             # dt = 0.1, # prediction dt
@@ -31,7 +41,7 @@ class ControllerNode(Node):
             weight_angle = 0.06, # weight for heading angle to goal
             weight_vel = 0.2, # weight for forward velocity
             weight_obs = 0.04, # weight for obstacle distance
-            obstacles_map = None, # if obstacles are known or a gridmap is available
+            # obstacles_map = [], # if obstacles are known or a gridmap is available
             init_pose = self.state, # initial robot pose
             max_linear_acc = 0.5, # m/s^2
             max_ang_acc = math.pi, # rad/s^2
@@ -40,23 +50,31 @@ class ControllerNode(Node):
             max_ang_vel = 2.82, # rad/s 
             min_ang_vel = -2.82, # rad/s 
             radius = 0.2, # m
+            collision_tol=self.collision_tol
         )
 
         # let's use this at the beginning 
         # static case
-        self.goal_pose = np.array([7.0, 7.0, math.pi/2.0])
+        self.goal_pose = np.array([7.0, 7.0])
         self.goal_reached = False
+
+        self.obstacles = []
 
         # PUBS & SUBS & TIMERS
         self.pub_vel = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.control_timer = self.create_timer(1.0/15.0, self.control_callback)
+        self.control_timer = self.create_timer(1.0/self.control_freq, self.control_callback)
+
+        if self.simulation:
+            self.lidar_subscriber = self.create_subscription(LaserScan, '/scan', self.lidar_callback, 10)
+        else:
+            self.lidar_subscriber = self.create_subscription(LaserScan, '/scan', self.lidar_callback, qos_profile_sensor_data)
 
 
     def control_callback(self):
         if self.goal_reached:
             self.get_logger().info("GOAL REACHED")
             return
-        u = self.dwa.compute_cmd(self.goal_pose, self.state, None)
+        u = self.dwa.compute_cmd(self.goal_pose, self.state, self.obstacles)
         v, w = u[0], u[1]
         self.state = motion_model(self.state, u, 1.0/15.0)
         self.get_logger().debug(f"pose (x, y, th): {self.state}")
@@ -66,6 +84,49 @@ class ControllerNode(Node):
         msg.linear.x = v
         msg.angular.z = w
         self.pub_vel.publish(msg)
+
+    def lidar_callback(self, msg : LaserScan): 
+        # Remove NaN, Inf or irregular values. Assign the minimum value of the LiDAR measurements to NaNs and the maximum to Inf.
+        # Only consider distance measures up to 3.5 meters
+        # 270 obstacles measurements are computationally expensive! Filter the total amount of ranges to num_ranges values in the range [12 - 30] (up to your choice) Only consider the minimum distance perceived for each angular sector.
+        # Determine the obstacle position in [x-y] coordinate given the robot pose and the laser scan ranges obtained.
+        ranges = []
+        angles = []
+        for r in np.array(msg.ranges): 
+            angle = (msg.angle_max - msg.angle_min) / msg.angle_increment
+            angles.append(angle)
+
+            if math.isfinite(r) and self.MIN_SCAN_VALUE < r < self.MAX_SCAN_VALUE: 
+                ranges.append(r)
+            elif math.isinf(r) or r > self.MAX_SCAN_VALUE:
+                ranges.append(self.MAX_SCAN_VALUE)
+            elif math.isnan(r)  or r < self.MIN_SCAN_VALUE:
+                ranges.append(self.MIN_SCAN_VALUE)
+        
+        min_ranges = []
+        min_angles = []
+        chunks_ranges = np.array_split(ranges, self.num_ranges)
+        chunks_angles = np.array_split(angles, self.num_ranges)
+        for cr, ca in zip(chunks_ranges, chunks_angles): 
+            min_ranges.append(np.min(cr))
+            min_angles.append(ca[np.argmin(cr)])
+        
+        obstacles = []
+        for r, a in zip(min_ranges, min_angles): 
+            if r < self.MAX_SCAN_VALUE: 
+                x = self.state[0] + r * np.cos(self.state[2] + a )
+                y = self.state[1] + r * np.sin(self.state[2] + a )
+                obstacles.append((x,y))
+       
+        self.obstacles = np.array(obstacles)
+
+        # Implement a safety mechanism to stop the robot and avoid collisions.
+        if np.any(np.array(min_ranges) < self.collision_tol):
+            stop_msg = Twist()
+            stop_msg.linear.x = 0.0
+            stop_msg.angular.z = 0.0
+            self.pub_vel.publish(stop_msg)
+        
 
 def main(args=None):
     rclpy.init(args=args)
