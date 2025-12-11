@@ -69,7 +69,8 @@ class ControllerNode(Node):
         self.control_timer = self.create_timer(1.0/self.control_freq, self.control_callback)
 
         self.goal_pub = self.create_publisher(Marker, '/goal_marker', 10)
-        self.goal_pub_timer = self.create_timer(0.1, self.goal_callback)
+        if self.simulation:
+            self.goal_sub = self.create_subscription(Odometry, "/dynamic_goal_pose", self.goal_callback, 10)
 
         self.odom_subscriber = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
 
@@ -114,7 +115,8 @@ class ControllerNode(Node):
 
         self.pub_vel.publish(msg)
 
-    def goal_callback(self):
+    def goal_callback(self, msg: Odometry):
+        self.goal_pose = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
         goal = Marker()
             
         goal.header.frame_id = "odom"
@@ -123,9 +125,11 @@ class ControllerNode(Node):
         goal.id = 0
         goal.type = Marker.CUBE
         goal.action = Marker.ADD
-        goal.pose.position.x = self.goal_pose[0]
-        goal.pose.position.y = self.goal_pose[1]
-        goal.pose.position.z = 0.0
+        # goal.pose.position.x = self.goal_pose[0]
+        goal.pose.position.x = msg.pose.pose.position.x
+        # goal.pose.position.y = self.goal_pose[1]
+        goal.pose.position.y = msg.pose.pose.position.y
+        goal.pose.position.z = msg.pose.pose.position.z
         goal.pose.orientation.x = 0.0
         goal.pose.orientation.y = 0.0
         goal.pose.orientation.z = 0.0

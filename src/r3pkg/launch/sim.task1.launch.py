@@ -26,13 +26,21 @@ def generate_launch_description():
     print(f"DIRECTORY OF THE ROSBAG: {bag}")
 
     return LaunchDescription([
-        IncludeLaunchDescription(
+        # IncludeLaunchDescription(
+        #     PathJoinSubstitution([
+        #         FindPackageShare('turtlebot3_gazebo'),
+        #         'launch',
+        #         'lab04.launch.py'
+        #     ]),
+        # ),
+        IncludeLaunchDescription([
+            # ros2 launch turtlebot3_gazebo project.launch.py
             PathJoinSubstitution([
                 FindPackageShare('turtlebot3_gazebo'),
                 'launch',
-                'lab04.launch.py'
+                'project.launch.py'
             ]),
-        ),
+        ]),
         Node(
             package=pkg_name,
             executable='controller_node',
@@ -40,6 +48,7 @@ def generate_launch_description():
             parameters=[
                 {
                     'use_sim_time': True,
+                    'simulation': True,
                 }
             ]
         ),
