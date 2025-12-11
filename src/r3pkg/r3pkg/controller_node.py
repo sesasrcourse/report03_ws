@@ -11,6 +11,7 @@ import math
 from .dwa import DWA, motion_model
 from rclpy.qos import qos_profile_sensor_data
 from visualization_msgs.msg import Marker, MarkerArray
+from tf_transformations import euler_from_quaternion
 
 
 
@@ -27,11 +28,11 @@ class ControllerNode(Node):
         self.declare_parameter('simulation', True)
         self.simulation = self.get_parameter('simulation').value
         
-        self.state = np.array([0.0, 0.0, 0.0]) # x y th
+        self.state = np.array([0.0, 0.0, 0.0, 0.0, 0.0]) # x y th
         self.MIN_SCAN_VALUE = 0.12
         self.MAX_SCAN_VALUE = 3.5 
         self.num_ranges = 30 # number of obstacle points to consider
-        self.collision_tol = 0.25
+        self.collision_tol = 0.2
         
         self.dwa = DWA(
             # dt = 0.1, # prediction dt
@@ -41,22 +42,22 @@ class ControllerNode(Node):
             w_samples = 20, # num of angular velocity samples
             goal_dist_tol = 0.2, # tolerance to consider the goal reached
             weight_angle = 0.06, # weight for heading angle to goal
-            weight_vel = 0.2, # weight for forward velocity
-            weight_obs = 0.04, # weight for obstacle distance
+            weight_vel = 0.1, # weight for forward velocity
+            weight_obs = 0.2, # weight for obstacle distance
             # obstacles_map = [], # if obstacles are known or a gridmap is available
-            init_pose = self.state, # initial robot pose
-            max_linear_acc = 0.5, # m/s^2
+            init_pose = self.state[0:3], # initial robot pose
+            max_linear_acc = 0.22, # m/s^2
             max_ang_acc = math.pi, # rad/s^2
-            max_lin_vel = 0.5, # m/s
+            max_lin_vel = 0.22, # m/s
             min_lin_vel = 0.0, # m/s
-            max_ang_vel = 2.82, # rad/s 
-            min_ang_vel = -2.82, # rad/s 
+            max_ang_vel = 2.84, # rad/s 
+            min_ang_vel = -2.84, # rad/s 
             radius = 0.2, # m
         )
 
         # let's use this at the beginning 
         # static case
-        self.goal_pose = np.array([-1.5 , 0.0])
+        self.goal_pose = np.array([0.5 , 0.8])
 
         self.goal_reached = False
         self.stop_flag = False
@@ -70,12 +71,27 @@ class ControllerNode(Node):
         self.goal_pub = self.create_publisher(Marker, '/goal_marker', 10)
         self.goal_pub_timer = self.create_timer(0.1, self.goal_callback)
 
+        self.odom_subscriber = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+
         self.filter_scan_pub = self.create_publisher(MarkerArray, '/filter_scan', 10)
         if self.simulation:
             self.lidar_subscriber = self.create_subscription(LaserScan, '/scan', self.lidar_callback, 10)
         else:
             self.lidar_subscriber = self.create_subscription(LaserScan, '/scan', self.lidar_callback, qos_profile_sensor_data)
+    
+    def odom_callback(self, msg : Odometry):
+        x = msg.pose.pose.position.x
+        y = msg.pose.pose.position.y
+        [_, _, theta] = euler_from_quaternion([
+                msg.pose.pose.orientation.x,
+                msg.pose.pose.orientation.y,
+                msg.pose.pose.orientation.z,
+                msg.pose.pose.orientation.w
+        ])
+        v = msg.twist.twist.linear.x
+        w = msg.twist.twist.angular.z
 
+        self.state = np.array([x, y, theta, v, w])
 
     def control_callback(self):
 
@@ -88,7 +104,6 @@ class ControllerNode(Node):
         if not self.stop_flag:
             u = self.dwa.compute_cmd(self.goal_pose, self.state, self.obstacles)
             v, w = u[0], u[1]
-            self.state = motion_model(self.state, u, 1.0/15.0)
             self.get_logger().debug(f"pose (x, y, th): {self.state}")
             self.get_logger().debug(f"cmd calculated: v: {v}, w: {w}")
             msg.linear.x = v
@@ -164,6 +179,8 @@ class ControllerNode(Node):
         # Implement a safety mechanism to stop the robot and avoid collisions.
         if np.any(np.array(min_ranges) < self.collision_tol):
             self.stop_flag = True
+        else: 
+            self.stop_flag = False 
 
         # FILTER SCAN MARKER ARRAY 
         markers = []

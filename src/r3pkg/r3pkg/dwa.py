@@ -98,7 +98,7 @@ class DWA():
         u = velocities[opt_idx]
         return u
 
-    def get_trajectories(self, robot_pose): 
+    def get_trajectories(self, robot_state): 
         """
         Get all the reachable velocities inside the dynamic window
         Simulate all trajectory with velocity values u=(v,w)
@@ -106,8 +106,9 @@ class DWA():
         - simulated paths : np.ndarray,  shape: (n_paths, sim_step, state_dim)
         - velocities : np.ndarray, shape (n_paths, 2)
         """
+        robot_pose = robot_state[0:3]
         # calculate reachable range of velocity and angular velocity in the dynamic window
-        min_lin_vel, max_lin_vel, min_ang_vel, max_ang_vel = self.compute_dynamic_window(self.robot.vel)
+        min_lin_vel, max_lin_vel, min_ang_vel, max_ang_vel = self.compute_dynamic_window(robot_state[3:5])
         
         v_values = np.linspace(min_lin_vel, max_lin_vel, self.v_samples)
         w_values = np.linspace(min_ang_vel, max_ang_vel, self.w_samples)
