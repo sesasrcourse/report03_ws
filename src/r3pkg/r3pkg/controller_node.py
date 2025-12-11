@@ -133,8 +133,8 @@ class ControllerNode(Node):
         # Determine the obstacle position in [x-y] coordinate given the robot pose and the laser scan ranges obtained.
         ranges = []
         angles = []
-        for r in np.array(msg.ranges): 
-            angle = (msg.angle_max - msg.angle_min) / msg.angle_increment
+        for i, r in enumerate(np.array(msg.ranges)): 
+            angle = msg.angle_increment * i 
             angles.append(angle)
 
             if math.isfinite(r) and self.MIN_SCAN_VALUE < r < self.MAX_SCAN_VALUE: 
