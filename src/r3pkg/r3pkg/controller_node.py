@@ -207,9 +207,9 @@ class ControllerNode(Node):
             m.scale.x = 0.05
             m.scale.y = 0.05
             m.scale.z = 0.05
-            m.color.r = i/(len(min_ranges)-1)*1.0
-            m.color.g = (1-i/(len(min_ranges)-1))*1.0
-            m.color.b = 0.0
+            # m.color.r = i/(len(min_ranges)-1)*1.0
+            # m.color.g = (1-i/(len(min_ranges)-1))*1.0
+            m.color.b = 1.0
             m.color.a = 1.0   # Don't forget to set the alpha!
             m.lifetime.sec = 1 # before the marker gets deleted
             markers.append(m)
