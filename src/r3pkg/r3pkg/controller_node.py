@@ -29,7 +29,7 @@ class ControllerNode(Node):
         self.MIN_SCAN_VALUE = 0.12
         self.MAX_SCAN_VALUE = 3.5 
         self.num_ranges = 30 # number of obstacle points to consider
-        self.collision_tol = 0.2
+        self.collision_tol = 0.25
         
         self.dwa = DWA(
             # dt = 0.1, # prediction dt
@@ -50,13 +50,13 @@ class ControllerNode(Node):
             max_ang_vel = 2.82, # rad/s 
             min_ang_vel = -2.82, # rad/s 
             radius = 0.2, # m
-            collision_tol=self.collision_tol
         )
 
         # let's use this at the beginning 
         # static case
-        self.goal_pose = np.array([7.0, 7.0])
+        self.goal_pose = np.array([-1.5 , 0.0])
         self.goal_reached = False
+        self.stop_flag = False
 
         self.obstacles = []
 
@@ -71,18 +71,25 @@ class ControllerNode(Node):
 
 
     def control_callback(self):
+
         if self.goal_reached:
             self.get_logger().info("GOAL REACHED")
             return
-        u = self.dwa.compute_cmd(self.goal_pose, self.state, self.obstacles)
-        v, w = u[0], u[1]
-        self.state = motion_model(self.state, u, 1.0/15.0)
-        self.get_logger().debug(f"pose (x, y, th): {self.state}")
-        self.get_logger().debug(f"cmd calculated: v: {v}, w: {w}")
-
+        
         msg = Twist() # to be published on /cmd_vel
-        msg.linear.x = v
-        msg.angular.z = w
+
+        if not self.stop_flag:
+            u = self.dwa.compute_cmd(self.goal_pose, self.state, self.obstacles)
+            v, w = u[0], u[1]
+            self.state = motion_model(self.state, u, 1.0/15.0)
+            self.get_logger().debug(f"pose (x, y, th): {self.state}")
+            self.get_logger().debug(f"cmd calculated: v: {v}, w: {w}")
+            msg.linear.x = v
+            msg.angular.z = w
+        else: 
+            msg.linear.x = 0.0
+            msg.angular.z = 0.0
+
         self.pub_vel.publish(msg)
 
     def lidar_callback(self, msg : LaserScan): 
@@ -122,10 +129,7 @@ class ControllerNode(Node):
 
         # Implement a safety mechanism to stop the robot and avoid collisions.
         if np.any(np.array(min_ranges) < self.collision_tol):
-            stop_msg = Twist()
-            stop_msg.linear.x = 0.0
-            stop_msg.angular.z = 0.0
-            self.pub_vel.publish(stop_msg)
+            self.stop_flag = True
         
 
 def main(args=None):
