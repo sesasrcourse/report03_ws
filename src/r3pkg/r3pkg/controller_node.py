@@ -1,17 +1,16 @@
 import rclpy
 from rclpy.node import Node
-import yaml
-import os
-import sys
 import numpy as np
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Point, Quaternion, Twist
+from geometry_msgs.msg import Twist
 import math
-from .dwa import DWA, motion_model
+from .dwa import DWA
 from rclpy.qos import qos_profile_sensor_data
 from visualization_msgs.msg import Marker, MarkerArray
 from tf_transformations import euler_from_quaternion
+from std_msgs.msg import String
+from landmark_msgs.msg import LandmarkArray
 
 
 
@@ -19,8 +18,7 @@ class ControllerNode(Node):
     def __init__(self):
         super().__init__('controller_node')
 
-        self.get_logger().debug("ALWAYS DEBUG FOR INFORMATION")
-        self.get_logger().debug(f"parameter: `use_sim_time`: {self.get_parameter('use_sim_time').get_parameter_value().bool_value}")
+        self.get_logger().info(f"parameter: `use_sim_time`: {self.get_parameter('use_sim_time').get_parameter_value().bool_value}")
         
         self.declare_parameter('control_freq', 15.0)
         self.control_freq = self.get_parameter('control_freq').value
@@ -28,11 +26,25 @@ class ControllerNode(Node):
         self.declare_parameter('simulation', True)
         self.simulation = self.get_parameter('simulation').value
         
-        self.state = np.array([0.0, 0.0, 0.0, 0.0, 0.0]) # x y th
+        self.state = np.array([0.0, 0.0, 0.0, 0.0, 0.0]) # x, y, theta, v, w
+
+        # LIDAR parameters    
         self.MIN_SCAN_VALUE = 0.12
         self.MAX_SCAN_VALUE = 3.5 
         self.num_ranges = 30 # number of obstacle points to consider
         self.collision_tol = 0.2
+
+        # Goal parameters
+        self.goal_pose = None 
+        self.goal_reached = False
+        self.stop_flag = False
+        self.obstacles = []
+
+        # Control parameters
+        self.controller_step = 1 
+        self.global_ctrl_step = 1
+        self.max_num_steps = 300
+        self.feedback_rate = 50
         
         self.dwa = DWA(
             # dt = 0.1, # prediction dt
@@ -44,7 +56,6 @@ class ControllerNode(Node):
             weight_angle = 0.06, # weight for heading angle to goal
             weight_vel = 0.1, # weight for forward velocity
             weight_obs = 0.2, # weight for obstacle distance
-            # obstacles_map = [], # if obstacles are known or a gridmap is available
             init_pose = self.state[0:3], # initial robot pose
             max_linear_acc = 0.22, # m/s^2
             max_ang_acc = math.pi, # rad/s^2
@@ -55,30 +66,25 @@ class ControllerNode(Node):
             radius = 0.2, # m
         )
 
-        # let's use this at the beginning 
-        # static case
-        self.goal_pose = np.array([0.5 , 0.8])
-
-        self.goal_reached = False
-        self.stop_flag = False
-
-        self.obstacles = []
-
         # PUBS & SUBS & TIMERS
         self.pub_vel = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.control_timer = self.create_timer(1.0/self.control_freq, self.control_callback)
-
         self.goal_pub = self.create_publisher(Marker, '/goal_marker', 10)
-        if self.simulation:
-            self.goal_sub = self.create_subscription(Odometry, "/dynamic_goal_pose", self.goal_callback, 10)
-
-        self.odom_subscriber = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
-
+        self.feedback_pub = self.create_publisher(String, '/dwa_feedback', 10)
         self.filter_scan_pub = self.create_publisher(MarkerArray, '/filter_scan', 10)
+        
+        self.odom_subscriber = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
         if self.simulation:
             self.lidar_subscriber = self.create_subscription(LaserScan, '/scan', self.lidar_callback, 10)
+            self.goal_sub = self.create_subscription(Odometry, "/dynamic_goal_pose", self.goal_callback, 10)
         else:
             self.lidar_subscriber = self.create_subscription(LaserScan, '/scan', self.lidar_callback, qos_profile_sensor_data)
+            self.goal_sub = self.create_subscription(LandmarkArray, '/camera/landmarks', self.landmark_callback, 10)
+
+        self.control_timer = self.create_timer(1.0/self.control_freq, self.control_callback)
+    
+    def landmark_callback(self, msg: LandmarkArray):
+        # TODO : set goal from landmarks
+        pass
     
     def odom_callback(self, msg : Odometry):
         x = msg.pose.pose.position.x
@@ -95,28 +101,72 @@ class ControllerNode(Node):
         self.state = np.array([x, y, theta, v, w])
 
     def control_callback(self):
-
-        if self.goal_reached:
-            self.get_logger().info("GOAL REACHED")
+        # Check if sensor data is available
+        if len(self.obstacles) == 0:
             return
         
-        msg = Twist() # to be published on /cmd_vel
-
-        if not self.stop_flag:
-            u = self.dwa.compute_cmd(self.goal_pose, self.state, self.obstacles)
-            v, w = u[0], u[1]
-            self.get_logger().debug(f"pose (x, y, th): {self.state}")
-            self.get_logger().debug(f"cmd calculated: v: {v}, w: {w}")
-            msg.linear.x = v
-            msg.angular.z = w
-        else: 
-            msg.linear.x = 0.0
-            msg.angular.z = 0.0
-
-        self.pub_vel.publish(msg)
+        # Check if goal pose is set
+        if self.goal_pose is None:
+            return
+        
+        # Check if goal reached
+        if self.goal_reached:
+            feedback_msg = String()
+            feedback_msg.data = "Goal Reached"
+            self.feedback_pub.publish(feedback_msg)
+            return
+        
+        # Check timeout
+        if self.controller_step >= self.max_num_steps: 
+            feedback_msg = String()
+            feedback_msg.data = "Timeout"
+            self.feedback_pub.publish(feedback_msg)
+            
+            vel_msg = Twist()
+            vel_msg.linear.x = 0.0
+            vel_msg.angular.z = 0.0
+            self.pub_vel.publish(vel_msg)
+            return
+        
+        # Check collision
+        if self.stop_flag:
+            feedback_msg = String()
+            feedback_msg.data = "Collision"
+            self.feedback_pub.publish(feedback_msg)
+                
+            vel_msg = Twist()
+            vel_msg.linear.x = 0.0
+            vel_msg.angular.z = 0.0
+            self.pub_vel.publish(vel_msg)
+            return
+        
+        # Check if goal reached
+        dist_to_goal = np.linalg.norm(self.state[0:2] - self.goal_pose)
+        if dist_to_goal < self.dwa.goal_dist_tol: 
+            self.goal_reached = True
+            return 
+        
+        # Provide intermediate task feedback
+        if self.global_ctrl_step % self.feedback_rate == 0: 
+            feedback_msg = String()
+            feedback_msg.data = f'Distance to goal {dist_to_goal} at step {self.controller_step}\nRobot Pose: {self.state[0:3]}'
+            self.feedback_pub.publish(feedback_msg)
+        
+        # Compute command for the robot with DWA controller
+        u = self.dwa.compute_cmd(self.goal_pose, self.state, self.obstacles)
+        
+        vel_msg = Twist()
+        vel_msg.linear.x = u[0]
+        vel_msg.angular.z = u[1]
+        self.pub_vel.publish(vel_msg)
+        
+        self.controller_step += 1
+        self.global_ctrl_step += 1
 
     def goal_callback(self, msg: Odometry):
         self.goal_pose = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
+        self.controller_step = 1
+        self.goal_reached = False
         goal = Marker()
             
         goal.header.frame_id = "odom"
@@ -146,10 +196,6 @@ class ControllerNode(Node):
         self.goal_pub.publish(goal)
 
     def lidar_callback(self, msg : LaserScan): 
-        # Remove NaN, Inf or irregular values. Assign the minimum value of the LiDAR measurements to NaNs and the maximum to Inf.
-        # Only consider distance measures up to 3.5 meters
-        # 270 obstacles measurements are computationally expensive! Filter the total amount of ranges to num_ranges values in the range [12 - 30] (up to your choice) Only consider the minimum distance perceived for each angular sector.
-        # Determine the obstacle position in [x-y] coordinate given the robot pose and the laser scan ranges obtained.
         ranges = []
         angles = []
         for i, r in enumerate(np.array(msg.ranges)): 
