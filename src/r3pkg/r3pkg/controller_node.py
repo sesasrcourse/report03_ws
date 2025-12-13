@@ -95,7 +95,10 @@ class ControllerNode(Node):
         lm: Landmark = msg.landmarks[0] # type: ignore
         range = lm.range
         bearing = lm.bearing
-        self.goal_pose = self.state[0:2] + range * np.array([np.cos(self.state[2] + bearing), np.sin(self.state[2] + bearing)])
+        # self.goal_pose = self.state[0:2] + range * np.array([np.cos(self.state[2] + bearing), np.sin(self.state[2] + bearing)])
+        # we dont care about odom
+        self.state[0:3] = np.zeros((3, ))
+        self.goal_pose = range * np.array([np.cos(bearing), np.sin(bearing)])
 
         self.get_logger().info(f"GOAL POSE: {self.goal_pose}")
         goal = Marker() 
@@ -139,7 +142,8 @@ class ControllerNode(Node):
         v = msg.twist.twist.linear.x
         w = msg.twist.twist.angular.z
 
-        self.state = np.array([x, y, theta, v, w])
+        # only interested in velocities not global position which would be useless anyway
+        self.state[3:5] = np.array([v, w])
 
     def control_callback(self):
         # Check if sensor data is available
