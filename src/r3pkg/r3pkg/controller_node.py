@@ -25,7 +25,10 @@ class ControllerNode(Node):
         self.declare_parameter('simulation', True)
         self.simulation = self.get_parameter('simulation').value
         
-        self.state = np.array([0.0, 0.0, 0.0, 0.0, 0.0]) # x, y, theta, v, w
+        # Robot Global State 
+        self.state = np.array([0.0, 0.0, 0.0, 0.0, 0.0]) # x_global, y_global, theta_global, v, w
+        # Robot-centric state for DWA (always origin at the robot)
+        self.robot_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0]) # x=0, y=0, theta=0, v, w
 
         # LIDAR parameters    
         self.MIN_SCAN_VALUE = 0.12
@@ -38,6 +41,7 @@ class ControllerNode(Node):
         self.goal_reached = False
         self.stop_flag = False
         self.obstacles = []
+        self.last_landmark_ts = 0 
         if self.simulation:
             self.first_time_tag_seen = False
         else:    
@@ -86,51 +90,51 @@ class ControllerNode(Node):
         self.control_timer = self.create_timer(1.0/self.control_freq, self.control_callback)
     
     def landmark_callback(self, msg: LandmarkArray):
-        # TODO : set goal from landmarks
+        """Real Robot's Goal Manager: compute goal from AprilTag (range/bearing) -> robot frame"""
         self.last_landmark_ts = self.get_clock().now().nanoseconds
         if self.first_time_tag_seen:
             self.first_time_tag_seen = False
             self.controller_step = 0
+            self.goal_reached = False
 
-        lm: Landmark = msg.landmarks[0] # type: ignore
-        range = lm.range
+        lm: Landmark = msg.landmarks[0]
+        range_val = lm.range
         bearing = lm.bearing
-        # self.goal_pose = self.state[0:2] + range * np.array([np.cos(self.state[2] + bearing), np.sin(self.state[2] + bearing)])
-        # we dont care about odom
-        self.state[0:3] = np.zeros((3, ))
-        self.goal_pose = range * np.array([np.cos(bearing), np.sin(bearing)])
+        
+        # Compute goal position in robot frame
+        goal_x_robot = range_val * np.cos(bearing)
+        goal_y_robot = range_val * np.sin(bearing)
+        self.goal_pose = np.array([goal_x_robot, goal_y_robot])
 
-        self.get_logger().info(f"GOAL POSE: {self.goal_pose}")
+        self.get_logger().info(f"GOAL in robot frame: x={goal_x_robot:.2f}, y={goal_y_robot:.2f} (range={range_val:.2f}, bearing={bearing:.2f})")
+        
+        # Visualization Marker in robot frame
         goal = Marker() 
-            
-        goal.header.frame_id = "odom"
-        # goal.header.stamp = rclp Time.now()
+        goal.header.frame_id = "base_link"
         goal.ns = "basic_shapes"
         goal.id = 0
         goal.type = Marker.CUBE
         goal.action = Marker.ADD
-        # goal.pose.position.x = self.goal_pose[0]
-        goal.pose.position.x = self.goal_pose[0]
-        # goal.pose.position.y = self.goal_pose[1]
-        goal.pose.position.y = self.goal_pose[1]
+        goal.pose.position.x = goal_x_robot
+        goal.pose.position.y = goal_y_robot
         goal.pose.position.z = 0.0
         goal.pose.orientation.x = 0.0
         goal.pose.orientation.y = 0.0
         goal.pose.orientation.z = 0.0
         goal.pose.orientation.w = 1.0
-
         goal.scale.x = 0.1
         goal.scale.y = 0.1
         goal.scale.z = 0.1
         goal.color.r = 0.0
         goal.color.g = 1.0
         goal.color.b = 0.0
-        goal.color.a = 0.5   # Don't forget to set the alpha!
+        goal.color.a = 0.5
         
         self.goal_pub.publish(goal)
         
     
     def odom_callback(self, msg : Odometry):
+        """Update global robot state from odometry"""
         x = msg.pose.pose.position.x
         y = msg.pose.pose.position.y
         [_, _, theta] = euler_from_quaternion([
@@ -142,21 +146,27 @@ class ControllerNode(Node):
         v = msg.twist.twist.linear.x
         w = msg.twist.twist.angular.z
 
-        # only interested in velocities not global position which would be useless anyway
-        self.state[3:5] = np.array([v, w])
+        # Global robot state for conversions
+        self.state = np.array([x, y, theta, v, w])
+        
+        #Set robot-centric state for DWA
+        self.robot_state = np.array([0.0, 0.0, 0.0, v, w])
 
     def control_callback(self):
         # Check if sensor data is available
         if len(self.obstacles) == 0 or self.first_time_tag_seen:
+            self.publish_stop_cmd()
             return
         
-        # if Time.now() - self.last_landmark_timestamp > 1.0/6.0: # 1/6 Hz seconds
-        #     self.goal_pose = None
-        if self.get_clock().now().nanoseconds - self.last_landmark_ts > 1.0/6.0:
-            self.goal_pose = None
+        # Check landmark timeout (only for real robot, not simulation)
+        if not self.simulation:
+            # If landmark not seen for >1/6 Hz seconds, reset goal
+            if self.get_clock().now().nanoseconds - self.last_landmark_ts > 1e9/6.0:
+                self.goal_pose = None
 
         # Check if goal pose is set
         if self.goal_pose is None:
+            self.publish_stop_cmd()
             return
         
         # Check if goal reached
@@ -164,6 +174,7 @@ class ControllerNode(Node):
             feedback_msg = String()
             feedback_msg.data = "Goal Reached"
             self.feedback_pub.publish(feedback_msg)
+            self.publish_stop_cmd()
             return
         
         # Check timeout
@@ -172,10 +183,7 @@ class ControllerNode(Node):
             feedback_msg.data = "Timeout"
             self.feedback_pub.publish(feedback_msg)
             
-            vel_msg = Twist()
-            vel_msg.linear.x = 0.0
-            vel_msg.angular.z = 0.0
-            self.pub_vel.publish(vel_msg)
+            self.publish_stop_cmd()
             return
         
         # Check collision
@@ -184,14 +192,11 @@ class ControllerNode(Node):
             feedback_msg.data = "Collision"
             self.feedback_pub.publish(feedback_msg)
                 
-            vel_msg = Twist()
-            vel_msg.linear.x = 0.0
-            vel_msg.angular.z = 0.0
-            self.pub_vel.publish(vel_msg)
+            self.publish_stop_cmd()
             return
         
-        # Check if goal reached
-        dist_to_goal = np.linalg.norm(self.state[0:2] - self.goal_pose)
+        # Check if goal reached (robot frame: goal relativo a robot in origine)
+        dist_to_goal = np.linalg.norm(self.goal_pose)
         if dist_to_goal < self.dwa.goal_dist_tol: 
             self.goal_reached = True
             return 
@@ -199,11 +204,11 @@ class ControllerNode(Node):
         # Provide intermediate task feedback
         if self.global_ctrl_step % self.feedback_rate == 0: 
             feedback_msg = String()
-            feedback_msg.data = f'Distance to goal {dist_to_goal} at step {self.controller_step}\nRobot Pose: {self.state[0:3]}'
+            feedback_msg.data = f'Distance to goal {dist_to_goal:.2f}m at step {self.global_ctrl_step}\nGoal (robot frame): [{self.goal_pose[0]:.2f}, {self.goal_pose[1]:.2f}]'
             self.feedback_pub.publish(feedback_msg)
         
-        # Compute command for the robot with DWA controller
-        u = self.dwa.compute_cmd(self.goal_pose, self.state, self.obstacles)
+        # Compute command for the robot with DWA controller (robot-centric state)
+        u = self.dwa.compute_cmd(self.goal_pose, self.robot_state, self.obstacles)
         
         vel_msg = Twist()
         vel_msg.linear.x = u[0]
@@ -215,34 +220,47 @@ class ControllerNode(Node):
         self.global_ctrl_step += 1
 
     def sim_goal_callback(self, msg: Odometry):
-        self.goal_pose = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
-        self.controller_step = 1
+        """Simulation Robot's Goal Manager: compute goal from odom  -> robot frame"""
+        # Goal in global coordinates (odom) 
+        goal_x_global = msg.pose.pose.position.x
+        goal_y_global = msg.pose.pose.position.y
+        
+        # Convert to robot frame
+        dx = goal_x_global - self.state[0]
+        dy = goal_y_global - self.state[1]
+        theta = self.state[2]
+        
+        # Rotate into robot frame
+        goal_x_robot = dx * np.cos(-theta) - dy * np.sin(-theta)
+        goal_y_robot = dx * np.sin(-theta) + dy * np.cos(-theta)
+        
+        self.goal_pose = np.array([goal_x_robot, goal_y_robot])
+        self.controller_step = 0
         self.goal_reached = False
+        
+        self.get_logger().info(f"GOAL sim: global=({goal_x_global:.2f},{goal_y_global:.2f}) -> robot=({goal_x_robot:.2f},{goal_y_robot:.2f})")
+        
+        # Visualization Marker in global frame
         goal = Marker()
-            
         goal.header.frame_id = "odom"
-        # goal.header.stamp = rclp Time.now()
         goal.ns = "basic_shapes"
         goal.id = 0
         goal.type = Marker.CUBE
         goal.action = Marker.ADD
-        # goal.pose.position.x = self.goal_pose[0]
-        goal.pose.position.x = msg.pose.pose.position.x
-        # goal.pose.position.y = self.goal_pose[1]
-        goal.pose.position.y = msg.pose.pose.position.y
+        goal.pose.position.x = goal_x_global
+        goal.pose.position.y = goal_y_global
         goal.pose.position.z = msg.pose.pose.position.z
         goal.pose.orientation.x = 0.0
         goal.pose.orientation.y = 0.0
         goal.pose.orientation.z = 0.0
         goal.pose.orientation.w = 1.0
-
         goal.scale.x = 0.1
         goal.scale.y = 0.1
         goal.scale.z = 0.1
         goal.color.r = 0.0
         goal.color.g = 1.0
         goal.color.b = 0.0
-        goal.color.a = 0.5   # Don't forget to set the alpha!
+        goal.color.a = 0.5
         
         self.goal_pub.publish(goal)
 
@@ -268,12 +286,14 @@ class ControllerNode(Node):
             min_ranges.append(np.min(cr))
             min_angles.append(ca[np.argmin(cr)])
         
+        # FILTERED OBSTACLES POINTS in robot frame
         obstacles = []
         for r, a in zip(min_ranges, min_angles): 
-            if r < self.MAX_SCAN_VALUE: 
-                x = self.state[0] + r * np.cos(self.state[2] + a )
-                y = self.state[1] + r * np.sin(self.state[2] + a )
-                obstacles.append((x,y))
+            if r < self.MAX_SCAN_VALUE:
+                # Coordinates relative to the robot
+                x = r * np.cos(a)
+                y = r * np.sin(a)
+                obstacles.append((x, y))
        
         self.obstacles = np.array(obstacles)
 
@@ -288,7 +308,6 @@ class ControllerNode(Node):
         for i, (r, a) in enumerate(zip(min_ranges, min_angles)):
             m = Marker()
             m.header.frame_id = "base_scan"
-            # goal.header.stamp = rclp Time.now()
             m.ns = "filter_scan"
             m.id = i
             m.type = Marker.SPHERE
@@ -304,15 +323,17 @@ class ControllerNode(Node):
             m.scale.x = 0.05
             m.scale.y = 0.05
             m.scale.z = 0.05
-            # m.color.r = i/(len(min_ranges)-1)*1.0
-            # m.color.g = (1-i/(len(min_ranges)-1))*1.0
             m.color.b = 1.0
             m.color.a = 1.0   # Don't forget to set the alpha!
             m.lifetime.sec = 1 # before the marker gets deleted
             markers.append(m)
-        # if len(markers) != 0:
-        #     self.get_logger().info("I SHOULD GENEREATE MARKERS")
         self.filter_scan_pub.publish(MarkerArray(markers=markers))
+
+    def publish_stop_cmd(self):
+        vel_msg = Twist()
+        vel_msg.linear.x = 0.0
+        vel_msg.angular.z = 0.0
+        self.pub_vel.publish(vel_msg)
 
         
 
