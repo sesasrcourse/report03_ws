@@ -10,8 +10,7 @@ from rclpy.qos import qos_profile_sensor_data
 from visualization_msgs.msg import Marker, MarkerArray
 from tf_transformations import euler_from_quaternion
 from std_msgs.msg import String
-from landmark_msgs.msg import LandmarkArray
-
+from landmark_msgs.msg import LandmarkArray, Landmark
 
 
 class ControllerNode(Node):
@@ -39,9 +38,13 @@ class ControllerNode(Node):
         self.goal_reached = False
         self.stop_flag = False
         self.obstacles = []
+        if self.simulation:
+            self.first_time_tag_seen = False
+        else:    
+            self.first_time_tag_seen = True
 
         # Control parameters
-        self.controller_step = 1 
+        self.controller_step = 0
         self.global_ctrl_step = 1
         self.max_num_steps = 300
         self.feedback_rate = 50
@@ -75,7 +78,7 @@ class ControllerNode(Node):
         self.odom_subscriber = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
         if self.simulation:
             self.lidar_subscriber = self.create_subscription(LaserScan, '/scan', self.lidar_callback, 10)
-            self.goal_sub = self.create_subscription(Odometry, "/dynamic_goal_pose", self.goal_callback, 10)
+            self.goal_sub = self.create_subscription(Odometry, "/dynamic_goal_pose", self.sim_goal_callback, 10)
         else:
             self.lidar_subscriber = self.create_subscription(LaserScan, '/scan', self.lidar_callback, qos_profile_sensor_data)
             self.goal_sub = self.create_subscription(LandmarkArray, '/camera/landmarks', self.landmark_callback, 10)
@@ -84,7 +87,45 @@ class ControllerNode(Node):
     
     def landmark_callback(self, msg: LandmarkArray):
         # TODO : set goal from landmarks
-        pass
+        self.last_landmark_ts = self.get_clock().now().nanoseconds
+        if self.first_time_tag_seen:
+            self.first_time_tag_seen = False
+            self.controller_step = 0
+
+        lm: Landmark = msg.landmarks[0] # type: ignore
+        range = lm.range
+        bearing = lm.bearing
+        self.goal_pose = self.state[0:2] + range * np.array([np.cos(self.state[2] + bearing), np.sin(self.state[2] + bearing)])
+
+        self.get_logger().info(f"GOAL POSE: {self.goal_pose}")
+        goal = Marker() 
+            
+        goal.header.frame_id = "odom"
+        # goal.header.stamp = rclp Time.now()
+        goal.ns = "basic_shapes"
+        goal.id = 0
+        goal.type = Marker.CUBE
+        goal.action = Marker.ADD
+        # goal.pose.position.x = self.goal_pose[0]
+        goal.pose.position.x = self.goal_pose[0]
+        # goal.pose.position.y = self.goal_pose[1]
+        goal.pose.position.y = self.goal_pose[1]
+        goal.pose.position.z = 0.0
+        goal.pose.orientation.x = 0.0
+        goal.pose.orientation.y = 0.0
+        goal.pose.orientation.z = 0.0
+        goal.pose.orientation.w = 1.0
+
+        goal.scale.x = 0.1
+        goal.scale.y = 0.1
+        goal.scale.z = 0.1
+        goal.color.r = 0.0
+        goal.color.g = 1.0
+        goal.color.b = 0.0
+        goal.color.a = 0.5   # Don't forget to set the alpha!
+        
+        self.goal_pub.publish(goal)
+        
     
     def odom_callback(self, msg : Odometry):
         x = msg.pose.pose.position.x
@@ -102,9 +143,14 @@ class ControllerNode(Node):
 
     def control_callback(self):
         # Check if sensor data is available
-        if len(self.obstacles) == 0:
+        if len(self.obstacles) == 0 or self.first_time_tag_seen:
             return
         
+        # if Time.now() - self.last_landmark_timestamp > 1.0/6.0: # 1/6 Hz seconds
+        #     self.goal_pose = None
+        if self.get_clock().now().nanoseconds - self.last_landmark_ts > 1.0/6.0:
+            self.goal_pose = None
+
         # Check if goal pose is set
         if self.goal_pose is None:
             return
@@ -159,11 +205,12 @@ class ControllerNode(Node):
         vel_msg.linear.x = u[0]
         vel_msg.angular.z = u[1]
         self.pub_vel.publish(vel_msg)
+        self.get_logger().info(f"CMD_VEL: u: {u}")
         
         self.controller_step += 1
         self.global_ctrl_step += 1
 
-    def goal_callback(self, msg: Odometry):
+    def sim_goal_callback(self, msg: Odometry):
         self.goal_pose = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
         self.controller_step = 1
         self.goal_reached = False

@@ -27,7 +27,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            f'controller_node = {package_name}.controller_node:main'
+            f'controller_node = {package_name}.controller_node:main',
+            f'lm_tester_node = {package_name}.landmark_tester:main'
         ],
     },
 )
