@@ -14,6 +14,11 @@ class DWA():
                  weight_angle = 0.04,
                  weight_vel = 0.2,
                  weight_obs = 0.1,
+                 dwa_mode = 'original',  # 'original', 'task2_a', 'task2_b'
+                 slowdown_threshold = 0.25,  # for task2_a: distance threshold to start slowing down                 
+                 weight_slowdown = 0.1,  # for task2_a: weight for slowdown penalty term                 
+                 weight_target_dist = 0.1,  # for task2_b: weight for target distance term
+                 target_distance = 0.3,  # for task2_b: desired distance to target
                  **kwargs
                  ):
 
@@ -26,6 +31,17 @@ class DWA():
 
         self.v_samples = v_samples
         self.w_samples = w_samples
+
+        # DWA mode selector
+        self.dwa_mode = dwa_mode  # 'original', 'task2_a' (slow near goal), 'task2_b' (target following)
+        
+        # Task 2_a parameters
+        self.slowdown_threshold = slowdown_threshold
+        self.weight_slowdown = weight_slowdown
+        
+        # Task 2_b parameters
+        self.weight_target_dist = weight_target_dist
+        self.target_distance = target_distance
 
         # define weight
         self.weight_angle = weight_angle
@@ -167,7 +183,9 @@ class DWA():
     def evaluate_paths(self, paths, velocities, goal_pose, robot_pose, obstacles):
         """
         Evaluate the simulated paths using the objective function.
-        J = w_h * heading + w_v * vel + w_o * obst_dist
+        Original: J = w_h * heading + w_v * vel + w_o * obst_dist
+        Task2_a: J = w_h * heading + w_v * vel + w_o * obst_dist (with velocity reduction near goal)
+        Task2_b: J = w_h * heading + w_v * vel + w_o * obst_dist + w_t * target_dist
         """
         # detect nearest obstacle
         nearest_obs = calc_nearest_obs(robot_pose, obstacles)
@@ -186,12 +204,35 @@ class DWA():
         score_vel = normalize(score_vel)
         score_obstacles = normalize(score_obstacles)
 
-        # Compute the idx of the optimal path according to the overall score
-        opt_idx = np.argmax(np.sum(
-            np.array([score_heading_angles, score_vel, score_obstacles])
-            * np.array([[self.weight_angle, self.weight_vel, self.weight_obs]]).T,
-            axis=0,
-        ))
+        # Task 2_a: Add slowdown penalty term when close to goal
+        if self.dwa_mode == 'task2_a':
+            score_slowdown = self.score_slowdown_penalty(velocities, paths, goal_pose)
+            score_slowdown = normalize(score_slowdown)
+            
+            # Compute the idx of the optimal path according to the overall score
+            opt_idx = np.argmax(np.sum(
+                np.array([score_heading_angles, score_vel, score_obstacles, score_slowdown])
+                * np.array([[self.weight_angle, self.weight_vel, self.weight_obs, self.weight_slowdown]]).T,
+                axis=0,
+            ))
+        # Task 2_b: Add target distance term for robot following
+        elif self.dwa_mode == 'task2_b':
+            score_target_dist = self.score_target_distance(paths, goal_pose)
+            score_target_dist = normalize(score_target_dist)
+            
+            # Compute the idx of the optimal path according to the overall score
+            opt_idx = np.argmax(np.sum(
+                np.array([score_heading_angles, score_vel, score_obstacles, score_target_dist])
+                * np.array([[self.weight_angle, self.weight_vel, self.weight_obs, self.weight_target_dist]]).T,
+                axis=0,
+            ))
+        else:
+            # Compute the idx of the optimal path according to the overall score
+            opt_idx = np.argmax(np.sum(
+                np.array([score_heading_angles, score_vel, score_obstacles])
+                * np.array([[self.weight_angle, self.weight_vel, self.weight_obs]]).T,
+                axis=0,
+            ))
 
         try:
             return opt_idx
@@ -244,3 +285,48 @@ class DWA():
             score_obstacle[score_obstacle < self.robot.radius + self.collision_tol] = -100 # heavy penalty for collision
                
         return score_obstacle
+    
+    def score_slowdown_penalty(self, u, path, goal_pose):
+        """
+        Task 2_a: Slowdown penalty term to reduce velocity when close to goal.
+        This is a decreasing term (penalty on vel) that is subtracted from the objective function
+        when the robot gets within slowdown_threshold distance from the goal.
+        Returns negative values for velocities when close to goal (acts as penalty).
+        """
+        vel = u[:, 0]  # linear velocity
+        dist_to_goal = np.linalg.norm(path[:, -1, 0:2] - goal_pose, axis=-1)
+        
+        # Initialize score to zero (no penalty when far from goal)
+        score = np.zeros_like(vel)
+        
+        # Apply penalty only when close to goal (within slowdown_threshold)
+        close_to_goal = dist_to_goal < self.slowdown_threshold
+        if np.any(close_to_goal):
+            # Penalty increases as we get closer to goal and with higher velocities
+            # Score is negative (penalty), proportional to vel and inversely to distance
+            penalty_factor = (1.0 - dist_to_goal[close_to_goal] / self.slowdown_threshold)
+            score[close_to_goal] = -vel[close_to_goal] * penalty_factor
+        
+        return score
+    
+    def score_target_distance(self, path, target_pose):
+        """
+        Task 2_b: Target distance objective for robot following.
+        Score trajectories to keep the target robot at a certain distance and fully visible.
+        Higher score when the distance is close to the desired target_distance.
+        """
+        # Calculate distance from the end of each trajectory to the target
+        dist_to_target = np.linalg.norm(path[:, -1, 0:2] - target_pose, axis=-1)
+        
+        # Score based on how close the distance is to the desired target_distance
+        # Highest score at target_distance, lower as we deviate
+        score = np.exp(-np.abs(dist_to_target - self.target_distance) / self.target_distance)
+        
+        # Keeping target in good sight
+        # Penalize if too close (< 0.5 * target_distance) or too far (> 2 * target_distance)
+        too_close = dist_to_target < 0.5 * self.target_distance
+        too_far = dist_to_target > 2.0 * self.target_distance
+        score[too_close] *= 0.5  # Reduce score if too close
+        score[too_far] *= 0.3    # Reduce score if too far
+        
+        return score

@@ -63,6 +63,8 @@ class ControllerNode(Node):
             weight_angle = 0.1, # weight for heading angle to goal
             weight_vel = 0.2, # weight for forward velocity
             weight_obs = 0.2, # weight for obstacle distance
+            collision_tol = 0.5, # min distance to obstacles
+            dwa_mode = 'task2_b', # DWA mode: 'original', 'task2_a', 'task2_b'
             init_pose = self.state[0:3], # initial robot pose
             max_linear_acc = 0.22, # m/s^2
             max_ang_acc = math.pi, # rad/s^2
@@ -172,7 +174,7 @@ class ControllerNode(Node):
         # Check if goal reached
         if self.goal_reached:
             feedback_msg = String()
-            feedback_msg.data = "Goal Reached"
+            feedback_msg.data = f"Goal Reached {self.get_clock().now().nanoseconds}"
             self.feedback_pub.publish(feedback_msg)
             self.publish_stop_cmd()
             return
