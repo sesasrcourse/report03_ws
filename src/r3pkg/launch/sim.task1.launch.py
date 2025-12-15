@@ -26,13 +26,6 @@ def generate_launch_description():
     print(f"DIRECTORY OF THE ROSBAG: {bag}")
 
     return LaunchDescription([
-        # IncludeLaunchDescription(
-        #     PathJoinSubstitution([
-        #         FindPackageShare('turtlebot3_gazebo'),
-        #         'launch',
-        #         'lab04.launch.py'
-        #     ]),
-        # ),
         IncludeLaunchDescription([
             # ros2 launch turtlebot3_gazebo project.launch.py
             PathJoinSubstitution([
@@ -52,7 +45,20 @@ def generate_launch_description():
                 }
             ]
         ),
-        # ExecuteProcess(
-        #     cmd=['ros2', 'bag', 'record', '-a', '-o', bag],
-        # )
+        ExecuteProcess(
+            cmd=[
+                'ros2', 'bag', 'record',
+                '/ground_truth',
+                '/scan',
+                '/camera/landmarks',
+                '/odom',
+                '/cmd_vel',
+                '/clock',
+                '/goal_marker',
+                '/dwa_feedback',
+                '/filter_scan',
+                '/dynamic_goal_pose',
+                '-o', bag
+            ]
+        )
     ])

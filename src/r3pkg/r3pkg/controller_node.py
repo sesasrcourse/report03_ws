@@ -34,7 +34,7 @@ class ControllerNode(Node):
         self.MIN_SCAN_VALUE = 0.12
         self.MAX_SCAN_VALUE = 3.5 
         self.num_ranges = 30 # number of obstacle points to consider
-        self.collision_tol = 0.2
+        self.collision_tol = 0.15
 
         # Goal parameters
         self.goal_pose = None 
@@ -57,11 +57,11 @@ class ControllerNode(Node):
             # dt = 0.1, # prediction dt
             sim_time = 2.0, # define trajectory generation time
             time_granularity = 0.1, # define trajectory generation step
-            v_samples = 10, # num of linear velocity samples
+            v_samples = 20, # num of linear velocity samples
             w_samples = 20, # num of angular velocity samples
             goal_dist_tol = 0.2, # tolerance to consider the goal reached
-            weight_angle = 0.06, # weight for heading angle to goal
-            weight_vel = 0.1, # weight for forward velocity
+            weight_angle = 0.1, # weight for heading angle to goal
+            weight_vel = 0.2, # weight for forward velocity
             weight_obs = 0.2, # weight for obstacle distance
             init_pose = self.state[0:3], # initial robot pose
             max_linear_acc = 0.22, # m/s^2

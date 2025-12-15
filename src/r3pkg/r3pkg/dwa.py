@@ -10,7 +10,7 @@ class DWA():
                  v_samples = 10,
                  w_samples = 20,
                  goal_dist_tol = 0.3,
-                 collision_tol = 0.3,
+                 collision_tol = 0.5,
                  weight_angle = 0.04,
                  weight_vel = 0.2,
                  weight_obs = 0.1,
