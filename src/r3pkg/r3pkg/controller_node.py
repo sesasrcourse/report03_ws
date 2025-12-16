@@ -78,7 +78,7 @@ class ControllerNode(Node):
         self.feedback_pub = self.create_publisher(String, '/dwa_feedback', 10)
         self.goal_reached_pub = self.create_publisher(Bool, '/goal_reached', 10)
         self.goal_pose_pub = self.create_publisher(Point, '/goal_pose', 10)
-        self.collision_flag_pub = self.create_publisher(Point, '/collision_flag', 10)
+        self.collision_flag_pub = self.create_publisher(Bool, '/collision_flag', 10)
 
         self.filter_scan_pub = self.create_publisher(MarkerArray, '/filter_scan', 10)
         
