@@ -1,0 +1,25 @@
+# THIS FILE CONTAINS THE PARAMETERS, DO NOT MODIFY
+# THE PARAMS IN THIS FILE ARE THE DEFAULT
+# USE THIS ONLY TO COPY IT AND PAST IT IN ANOTHER
+# CONFIG
+controller_node:
+  ros__parameters:
+    # use_sim_time: false # NEVER SET THIS ONE FROM HERE
+    # simulation: false # NEVER SET THIS ONE FROM HERE
+    sim_time: 2.0
+    time_granularity: 0.1
+    v_samples: 20
+    w_samples: 20
+    goal_dist_tol: 0.2
+    weight_angle: 0.1
+    weight_vel: 0.2
+    weight_obs: 0.2
+    collision_tol: 0.1
+    # obj_fun: '1' # NEVER SET THIS ONE FROM HERE
+    max_linear_acc:  0.22
+    max_ang_acc:  3.141592653589793
+    max_lin_vel:  0.22
+    min_lin_vel:  0.0
+    max_ang_vel:  2.84
+    min_ang_vel:  -2.84
+    radius:  0.2
