@@ -296,10 +296,11 @@ class ControllerNode(Node):
                 obstacles.append((x, y))
        
         self.obstacles = np.array(obstacles)
-        self.get_logger().info(f'OBSTACLES detected: {self.obstacles}')
+        # self.get_logger().info(f'OBSTACLES detected: {self.obstacles}')
 
         # Implement a safety mechanism to stop the robot and avoid collisions.
         if np.any(np.array(min_ranges) < self.collision_tol):
+            self.get_logger().info("COLLISION DETECTED: STOP")
             self.stop_flag = True
         else: 
             self.stop_flag = False 
