@@ -1,9 +1,9 @@
 [submodule "src/turtlebot3_perception"]
 	path = src/turtlebot3_perception
 	url = https://github.com/SESASR-Course/turtlebot3_perception.git
-[submodule "src/planning_control_methods"]
-	path = src/planning_control_methods
-	url = git@github.com:SESASR-Course/planning_control_methods.git
+# [submodule "src/planning_control_methods"]
+# 	path = src/planning_control_methods
+# 	url = git@github.com:SESASR-Course/planning_control_methods.git
 [submodule "src/turtlebot3_simulations"]
 	path = src/turtlebot3_simulations
-	url = git@github.com:SESASR-Course/turtlebot3_simulations.git
+	url = https://github.com/SESASR-Course/turtlebot3_simulations.git
