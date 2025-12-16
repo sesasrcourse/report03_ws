@@ -9,7 +9,8 @@ from .dwa import DWA
 from rclpy.qos import qos_profile_sensor_data
 from visualization_msgs.msg import Marker, MarkerArray
 from tf_transformations import euler_from_quaternion
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
+from geometry_msgs.msg import Point
 from landmark_msgs.msg import LandmarkArray, Landmark
 
 
@@ -75,6 +76,10 @@ class ControllerNode(Node):
         self.pub_vel = self.create_publisher(Twist, '/cmd_vel', 10)
         self.goal_pub = self.create_publisher(Marker, '/goal_marker', 10)
         self.feedback_pub = self.create_publisher(String, '/dwa_feedback', 10)
+        self.goal_reached_pub = self.create_publisher(Bool, '/goal_reached', 10)
+        self.goal_pose_pub = self.create_publisher(Point, '/goal_pose', 10)
+        self.collision_flag_pub = self.create_publisher(Point, '/collision_flag', 10)
+
         self.filter_scan_pub = self.create_publisher(MarkerArray, '/filter_scan', 10)
         
         self.odom_subscriber = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
@@ -158,6 +163,11 @@ class ControllerNode(Node):
             f"goal_reached: {self.goal_reached}\n"
             f"collision_flag: {self.collision_flag}\n"
         )
+        self.goal_reached_pub.publish(Bool(data = self.goal_reached))
+        if self.goal_pose is not None:
+            self.goal_pose_pub.publish(Point(x=self.goal_pose[0], y=self.goal_pose[1]))
+        self.collision_flag_pub.publish(Bool(data=self.collision_flag))
+
         # Check if sensor data is available
         if len(self.obstacles) == 0 or self.first_time_tag_seen:    
             self.publish_stop_cmd()
@@ -304,6 +314,7 @@ class ControllerNode(Node):
         # self.get_logger().info(f'OBSTACLES detected: {self.obstacles}')
 
         # Implement a safety mechanism to stop the robot and avoid collisions.
+        # TODO check if this works
         if np.any(np.array(min_ranges) <= self.collision_tol):
             self.get_logger().info("COLLISION DETECTED: STOP")
             self.collision_flag = True
