@@ -273,9 +273,9 @@ class ControllerNode(Node):
 
             if math.isfinite(r) and self.MIN_SCAN_VALUE < r < self.MAX_SCAN_VALUE: 
                 ranges.append(r)
-            elif math.isinf(r) or r > self.MAX_SCAN_VALUE:
+            elif math.isinf(r) or math.isnan(r) or r > self.MAX_SCAN_VALUE:
                 ranges.append(self.MAX_SCAN_VALUE)
-            elif math.isnan(r)  or r < self.MIN_SCAN_VALUE:
+            elif r < self.MIN_SCAN_VALUE:
                 ranges.append(self.MIN_SCAN_VALUE)
         
         min_ranges = []
