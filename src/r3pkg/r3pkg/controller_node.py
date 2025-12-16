@@ -33,7 +33,7 @@ class ControllerNode(Node):
         # Goal parameters
         self.goal_pose = None 
         self.goal_reached = False
-        self.stop_flag = False
+        self.collision_flag = False
         self.obstacles = []
         self.last_landmark_ts = 0
 
@@ -106,7 +106,7 @@ class ControllerNode(Node):
         goal_y_robot = range_val * np.sin(bearing)
         self.goal_pose = np.array([goal_x_robot, goal_y_robot])
 
-        self.get_logger().info(f"GOAL in robot frame: x={goal_x_robot:.2f}, y={goal_y_robot:.2f} (range={range_val:.2f}, bearing={bearing:.2f})")
+        # self.get_logger().info(f"GOAL in robot frame: x={goal_x_robot:.2f}, y={goal_y_robot:.2f} (range={range_val:.2f}, bearing={bearing:.2f})")
         
         # Visualization Marker in robot frame
         goal = Marker() 
@@ -153,8 +153,13 @@ class ControllerNode(Node):
         self.robot_state = np.array([0.0, 0.0, 0.0, v, w])
 
     def control_callback(self):
+        self.get_logger().info(
+            f"goal_pose: {self.goal_pose}\n"
+            f"goal_reached: {self.goal_reached}\n"
+            f"collision_flag: {self.collision_flag}\n"
+        )
         # Check if sensor data is available
-        if len(self.obstacles) == 0 or self.first_time_tag_seen:
+        if len(self.obstacles) == 0 or self.first_time_tag_seen:    
             self.publish_stop_cmd()
             return
         
@@ -187,7 +192,7 @@ class ControllerNode(Node):
             return
         
         # Check collision
-        if self.stop_flag:
+        if self.collision_flag:
             feedback_msg = String()
             feedback_msg.data = "Collision"
             self.feedback_pub.publish(feedback_msg)
@@ -299,11 +304,11 @@ class ControllerNode(Node):
         # self.get_logger().info(f'OBSTACLES detected: {self.obstacles}')
 
         # Implement a safety mechanism to stop the robot and avoid collisions.
-        if np.any(np.array(min_ranges) < self.collision_tol):
+        if np.any(np.array(min_ranges) <= self.collision_tol):
             self.get_logger().info("COLLISION DETECTED: STOP")
-            self.stop_flag = True
+            self.collision_flag = True
         else: 
-            self.stop_flag = False 
+            self.collision_flag = False 
 
         # FILTER SCAN MARKER ARRAY 
         markers = []

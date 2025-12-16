@@ -14,7 +14,7 @@ controller_node:
     weight_angle: 0.1
     weight_vel: 0.2
     weight_obs: 0.2
-    collision_tol: 0.1
+    collision_tol: 0.13
     # obj_fun: '1' # NEVER SET THIS ONE FROM HERE
     max_linear_acc:  0.22
     max_ang_acc:  3.141592653589793
