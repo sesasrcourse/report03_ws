@@ -9,10 +9,10 @@ from datetime import datetime
 import os
 
 def set_up(context):
-    launch_config = []
+
     pkg_name = 'r3pkg'
 
-    obj_fun  = LaunchConfiguration('obj_fun', default='1').perform(context=context)
+    obj_fun  = LaunchConfiguration('obj_fun').perform(context=context)
 
     share_dir = get_package_share_directory(pkg_name)
     ws_dir = os.path.abspath(os.path.join(share_dir, '../../../../'))
@@ -21,12 +21,11 @@ def set_up(context):
         os.mkdir(rosbags_dir)
 
     timestamp = datetime.now().strftime("%d-%b_%H_%M_%S")
-    # bag = os.path.join(rosbags_dir, f'task_{obj_fun}_sim_{timestamp}')
     bag = os.path.join(rosbags_dir, f's{obj_fun}_{timestamp}')
 
     print(f"DIRECTORY OF THE ROSBAG: {bag}")
 
-    launch_config= [
+    launch_config = [
         IncludeLaunchDescription([
             # ros2 launch turtlebot3_gazebo project.launch.py
             PathJoinSubstitution([

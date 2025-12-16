@@ -16,20 +16,9 @@ from landmark_msgs.msg import LandmarkArray, Landmark
 class ControllerNode(Node):
     def __init__(self):
         super().__init__('controller_node')
-
-        self.get_logger().info(f"parameter: `use_sim_time`: {self.get_parameter('use_sim_time').get_parameter_value().bool_value}")
         
-        self.declare_parameter('control_freq', 15.0)
-        self.control_freq = self.get_parameter('control_freq').value
+        self.declare_and_get_params()
 
-        self.declare_parameter('simulation', True)
-        self.simulation = self.get_parameter('simulation').value
-
-        self.declare_parameter('obj_fun', value='1')
-        self.obj_fun = self.get_parameter('obj_fun').get_parameter_value().string_value
-
-        self.get_logger().info(f"obj_fun ({type(self.obj_fun)} = {self.obj_fun})")
-        
         # Robot Global State 
         self.state = np.array([0.0, 0.0, 0.0, 0.0, 0.0]) # x_global, y_global, theta_global, v, w
         # Robot-centric state for DWA (always origin at the robot)
@@ -46,7 +35,8 @@ class ControllerNode(Node):
         self.goal_reached = False
         self.stop_flag = False
         self.obstacles = []
-        self.last_landmark_ts = 0 
+        self.last_landmark_ts = 0
+
         if self.simulation:
             self.first_time_tag_seen = False
         else:    
@@ -60,24 +50,24 @@ class ControllerNode(Node):
         
         self.dwa = DWA(
             # dt = 0.1, # prediction dt
-            sim_time = 2.0, # define trajectory generation time
-            time_granularity = 0.1, # define trajectory generation step
-            v_samples = 20, # num of linear velocity samples
-            w_samples = 20, # num of angular velocity samples
-            goal_dist_tol = 0.2, # tolerance to consider the goal reached
-            weight_angle = 0.1, # weight for heading angle to goal
-            weight_vel = 0.2, # weight for forward velocity
-            weight_obs = 0.2, # weight for obstacle distance
-            collision_tol = 0.5, # min distance to obstacles
+            sim_time = self.sim_time, # define trajectory generation time
+            time_granularity = self.time_granularity, # define trajectory generation step
+            v_samples = self.v_samples, # num of linear velocity samples
+            w_samples = self.w_samples, # num of angular velocity samples
+            goal_dist_tol = self.goal_dist_tol, # tolerance to consider the goal reached
+            weight_angle = self.weight_angle, # weight for heading angle to goal
+            weight_vel = self.weight_vel, # weight for forward velocity
+            weight_obs = self.weight_obs, # weight for obstacle distance
+            collision_tol = self.collision_tol, # min distance to obstacles
             obj_fun = self.obj_fun, # DWA objective function: '1', '2a', '2b'
             init_pose = self.state[0:3], # initial robot pose
-            max_linear_acc = 0.22, # m/s^2
-            max_ang_acc = math.pi, # rad/s^2
-            max_lin_vel = 0.22, # m/s
-            min_lin_vel = 0.0, # m/s
-            max_ang_vel = 2.84, # rad/s 
-            min_ang_vel = -2.84, # rad/s 
-            radius = 0.2, # m
+            max_linear_acc = self.max_linear_acc, # m/s^2
+            max_ang_acc = self.max_ang_acc, # rad/s^2
+            max_lin_vel = self.max_lin_vel, # m/s
+            min_lin_vel = self.min_lin_vel, # m/s
+            max_ang_vel = self.max_ang_vel, # rad/s 
+            min_ang_vel = self.min_ang_vel, # rad/s 
+            radius = self.radius, # m
         )
 
         # PUBS & SUBS & TIMERS
@@ -342,7 +332,99 @@ class ControllerNode(Node):
         vel_msg.angular.z = 0.0
         self.pub_vel.publish(vel_msg)
 
+    def declare_and_get_params(self):
+        """
+        This function wraps all the boiler plate of parameter declaration and setting.
+
+        At the end of the declaration it also logs the list of parameters, their types and values
+        :param self: node
+        """
+        self.use_sim_time = self.get_parameter('use_sim_time').get_parameter_value().bool_value
+
+        self.declare_parameter('control_freq', 15.0)
+        self.control_freq = self.get_parameter('control_freq').get_parameter_value().double_value
+
+        self.declare_parameter('simulation', True)
+        self.simulation = self.get_parameter('simulation').get_parameter_value().bool_value
+
+
+        # PARAMS FOR DWA
+
+        self.declare_parameter('sim_time', 2.0)
+        self.sim_time = self.get_parameter('sim_time').get_parameter_value().double_value
+
+        self.declare_parameter('time_granularity', 0.1)
+        self.time_granularity = self.get_parameter('time_granularity').get_parameter_value().double_value
+
+        self.declare_parameter('v_samples', 20)
+        self.v_samples = self.get_parameter('v_samples').get_parameter_value().integer_value
+
+        self.declare_parameter('w_samples', 20)
+        self.w_samples = self.get_parameter('w_samples').get_parameter_value().integer_value
+
+        self.declare_parameter('goal_dist_tol', 0.2)
+        self.goal_dist_tol = self.get_parameter('goal_dist_tol').get_parameter_value().double_value
+
+        self.declare_parameter('weight_angle', 0.1)
+        self.weight_angle = self.get_parameter('weight_angle').get_parameter_value().double_value
+
+        self.declare_parameter('weight_vel', 0.2)
+        self.weight_vel = self.get_parameter('weight_vel').get_parameter_value().double_value
+
+        self.declare_parameter('weight_obs', 0.2)
+        self.weight_obs = self.get_parameter('weight_obs').get_parameter_value().double_value
+
+        self.declare_parameter('collision_tol', 0.5)
+        self.collision_tol = self.get_parameter('collision_tol').get_parameter_value().double_value
         
+        self.declare_parameter('obj_fun', value='1')
+        self.obj_fun = self.get_parameter('obj_fun').get_parameter_value().string_value
+
+        self.declare_parameter('max_linear_acc',  0.22)
+        self.max_linear_acc = self.get_parameter('max_linear_acc').get_parameter_value().double_value
+
+        self.declare_parameter('max_ang_acc',  math.pi)
+        self.max_ang_acc = self.get_parameter('max_ang_acc').get_parameter_value().double_value
+
+        self.declare_parameter('max_lin_vel',  0.22)
+        self.max_lin_vel = self.get_parameter('max_lin_vel').get_parameter_value().double_value
+
+        self.declare_parameter('min_lin_vel',  0.0)
+        self.min_lin_vel = self.get_parameter('min_lin_vel').get_parameter_value().double_value
+
+        self.declare_parameter('max_ang_vel',  2.84)
+        self.max_ang_vel = self.get_parameter('max_ang_vel').get_parameter_value().double_value
+
+        self.declare_parameter('min_ang_vel',  -2.84)
+        self.min_ang_vel = self.get_parameter('min_ang_vel').get_parameter_value().double_value
+
+        self.declare_parameter('radius',  0.2)
+        self.radius = self.get_parameter('radius').get_parameter_value().double_value
+
+
+        self.get_logger().info("-----NODE PARAMS (as self.*)-----\n"
+                                f"- use_sim_time: {self.use_sim_time}\t({type(self.use_sim_time)})\n"
+                                f"- control_freq: {self.control_freq}\t({type(self.control_freq)})\n"
+                                f"- simulation: {self.simulation}\t({type(self.simulation)})\n"
+                                "\nDWA PARAMS:\n"
+                                f"- sim_time: {self.sim_time}\t({type(self.sim_time)})\n"
+                                f"- time_granularity: {self.time_granularity}\t({type(self.time_granularity)})\n"
+                                f"- v_samples: {self.v_samples}\t({type(self.v_samples)})\n"
+                                f"- w_samples: {self.w_samples}\t({type(self.w_samples)})\n"
+                                f"- goal_dist_tol: {self.goal_dist_tol}\t({type(self.goal_dist_tol)})\n"
+                                f"- weight_angle: {self.weight_angle}\t({type(self.weight_angle)})\n"
+                                f"- weight_vel: {self.weight_vel}\t({type(self.weight_vel)})\n"
+                                f"- weight_obs: {self.weight_obs}\t({type(self.weight_obs)})\n"
+                                f"- collision_tol: {self.collision_tol}\t({type(self.collision_tol)})\n"
+                                f"- obj_fun: {self.obj_fun}\t({type(self.obj_fun)})\n"
+                                f"- max_linear_acc: {self.max_linear_acc}\t({type(self.max_linear_acc)})\n"
+                                f"- max_ang_acc: {self.max_ang_acc}\t({type(self.max_ang_acc)})\n"
+                                f"- max_lin_vel: {self.max_lin_vel}\t({type(self.max_lin_vel)})\n"
+                                f"- min_lin_vel: {self.min_lin_vel}\t({type(self.min_lin_vel)})\n"
+                                f"- max_ang_vel: {self.max_ang_vel}\t({type(self.max_ang_vel)})\n"
+                                f"- min_ang_vel: {self.min_ang_vel}\t({type(self.min_ang_vel)})\n"
+                                f"- radius: {self.radius}\t({type(self.radius)})\n"
+                               "----------")
 
 def main(args=None):
     rclpy.init(args=args)
