@@ -43,7 +43,7 @@ class ControllerNode(Node):
             self.first_time_tag_seen = True
 
         # Control parameters
-        self.control_freq = 15.0
+        self.control_freq = 15.0 # Hz
         self.controller_step = 0
         self.global_ctrl_step = 1
         self.max_num_steps = 300
@@ -402,7 +402,6 @@ class ControllerNode(Node):
 
         self.get_logger().info("-----NODE PARAMS (as self.*)-----\n"
                                 f"- use_sim_time: {self.use_sim_time}\t({type(self.use_sim_time)})\n"
-                                f"- control_freq: {self.control_freq}\t({type(self.control_freq)})\n"
                                 f"- simulation: {self.simulation}\t({type(self.simulation)})\n"
                                 "\nDWA PARAMS:\n"
                                 f"- sim_time: {self.sim_time}\t({type(self.sim_time)})\n"

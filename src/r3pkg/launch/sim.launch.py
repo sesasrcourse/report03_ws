@@ -14,6 +14,8 @@ def set_up(context):
 
     obj_fun  = LaunchConfiguration('obj_fun').perform(context=context)
 
+    config_file = LaunchConfiguration('conf', default='node_params_std.yaml').perform(context=context)
+
     share_dir = get_package_share_directory(pkg_name)
     ws_dir = os.path.abspath(os.path.join(share_dir, '../../../../'))
     rosbags_dir = os.path.join(ws_dir, 'rosbags')
@@ -24,6 +26,16 @@ def set_up(context):
     bag = os.path.join(rosbags_dir, f's{obj_fun}_{timestamp}')
 
     print(f"DIRECTORY OF THE ROSBAG: {bag}")
+
+    config_file_path = os.path.join(
+        share_dir,
+        'config',
+        config_file
+    )
+    if not os.path.exists(config_file_path):
+        raise FileNotFoundError
+    
+    print(f"CONFIG FILE: {config_file_path}")
 
     launch_config = [
         IncludeLaunchDescription([
@@ -43,7 +55,8 @@ def set_up(context):
                     'obj_fun': obj_fun, 
                     'use_sim_time': True,
                     'simulation': True,
-                }
+                },
+                config_file_path,
             ]
         ),
         ExecuteProcess(
@@ -56,6 +69,7 @@ def set_up(context):
                 '/cmd_vel',
                 '/clock',
                 '/goal_marker',
+                '/rosout',
                 '/dwa_feedback',
                 '/filter_scan',
                 '/dynamic_goal_pose',
@@ -70,5 +84,7 @@ def set_up(context):
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('obj_fun', choices=['1', '2a', '2b'], description='Choose between objective functions 1, 2a, 2b'),
+        DeclareLaunchArgument('conf', 
+                              default_value='node_params_std.yaml', description='name of the config file to use for node params inside of the folder config'),
         OpaqueFunction(function=set_up)
     ])
