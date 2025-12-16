@@ -1,8 +1,9 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import ExecuteProcess, DeclareLaunchArgument, OpaqueFunction
+from launch_ros.substitutions import FindPackageShare
+from launch.actions import ExecuteProcess, DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription
 from ament_index_python.packages import get_package_share_directory
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from datetime import datetime
 import os
 
@@ -36,6 +37,22 @@ def set_up(context):
     print(f"CONFIG FILE: {config_file_path}")
 
     launch_config = [
+        # ros2 launch turtlebot3_perception camera.launch.py            PathJoinSubstitution([
+        IncludeLaunchDescription([
+            PathJoinSubstitution([
+                FindPackageShare('turtlebot3_perception'),
+                'launch',
+                'camera.launch.py'
+            ])
+        ]),
+        IncludeLaunchDescription([
+            # ros2 launch turtlebot3_perception apriltag.launch.py
+            PathJoinSubstitution([
+                FindPackageShare('turtlebot3_perception'),
+                'launch',
+                'apriltag.launch.py'
+            ]),
+        ]),
         Node(
             package=pkg_name,
             executable='controller_node',

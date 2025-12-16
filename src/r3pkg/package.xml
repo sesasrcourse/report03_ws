@@ -9,8 +9,8 @@
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>enum</exec_depend>
-  <exec_depend>math</exec_depend>
+  <!-- <exec_depend>enum</exec_depend> -->
+  <!-- <exec_depend>math</exec_depend> -->
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>ros2launch</exec_depend>
