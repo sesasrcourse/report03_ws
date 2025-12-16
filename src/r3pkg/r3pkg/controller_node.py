@@ -27,7 +27,7 @@ class ControllerNode(Node):
         # LIDAR parameters    
         self.MIN_SCAN_VALUE = 0.12
         self.MAX_SCAN_VALUE = 3.5 
-        self.num_ranges = 30 # number of obstacle points to consider
+        self.num_ranges = 20 # number of obstacle points to consider
         self.collision_tol = 0.15
 
         # Goal parameters
