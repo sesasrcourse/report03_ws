@@ -43,6 +43,7 @@ class ControllerNode(Node):
             self.first_time_tag_seen = True
 
         # Control parameters
+        self.control_freq = 15.0
         self.controller_step = 0
         self.global_ctrl_step = 1
         self.max_num_steps = 300
@@ -340,9 +341,6 @@ class ControllerNode(Node):
         :param self: node
         """
         self.use_sim_time = self.get_parameter('use_sim_time').get_parameter_value().bool_value
-
-        self.declare_parameter('control_freq', 15.0)
-        self.control_freq = self.get_parameter('control_freq').get_parameter_value().double_value
 
         self.declare_parameter('simulation', True)
         self.simulation = self.get_parameter('simulation').get_parameter_value().bool_value
