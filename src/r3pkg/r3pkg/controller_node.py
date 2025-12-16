@@ -24,6 +24,11 @@ class ControllerNode(Node):
 
         self.declare_parameter('simulation', True)
         self.simulation = self.get_parameter('simulation').value
+
+        self.declare_parameter('obj_fun', value='1')
+        self.obj_fun = self.get_parameter('obj_fun').get_parameter_value().string_value
+
+        self.get_logger().info(f"obj_fun ({type(self.obj_fun)} = {self.obj_fun})")
         
         # Robot Global State 
         self.state = np.array([0.0, 0.0, 0.0, 0.0, 0.0]) # x_global, y_global, theta_global, v, w
@@ -64,7 +69,7 @@ class ControllerNode(Node):
             weight_vel = 0.2, # weight for forward velocity
             weight_obs = 0.2, # weight for obstacle distance
             collision_tol = 0.5, # min distance to obstacles
-            dwa_mode = 'task2_b', # DWA mode: 'original', 'task2_a', 'task2_b'
+            obj_fun = self.obj_fun, # DWA objective function: '1', '2a', '2b'
             init_pose = self.state[0:3], # initial robot pose
             max_linear_acc = 0.22, # m/s^2
             max_ang_acc = math.pi, # rad/s^2

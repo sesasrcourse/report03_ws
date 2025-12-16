@@ -14,7 +14,7 @@ class DWA():
                  weight_angle = 0.04,
                  weight_vel = 0.2,
                  weight_obs = 0.1,
-                 dwa_mode = 'original',  # 'original', 'task2_a', 'task2_b'
+                 obj_fun = '1',  # '1', '2a', '2b'
                  slowdown_threshold = 0.25,  # for task2_a: distance threshold to start slowing down                 
                  weight_slowdown = 0.1,  # for task2_a: weight for slowdown penalty term                 
                  weight_target_dist = 0.1,  # for task2_b: weight for target distance term
@@ -33,7 +33,7 @@ class DWA():
         self.w_samples = w_samples
 
         # DWA mode selector
-        self.dwa_mode = dwa_mode  # 'original', 'task2_a' (slow near goal), 'task2_b' (target following)
+        self.obj_fun = obj_fun  # 'original', 'task2_a' (slow near goal), 'task2_b' (target following)
         
         # Task 2_a parameters
         self.slowdown_threshold = slowdown_threshold
@@ -205,7 +205,7 @@ class DWA():
         score_obstacles = normalize(score_obstacles)
 
         # Task 2_a: Add slowdown penalty term when close to goal
-        if self.dwa_mode == 'task2_a':
+        if self.obj_fun == '2a':
             score_slowdown = self.score_slowdown_penalty(velocities, paths, goal_pose)
             score_slowdown = normalize(score_slowdown)
             
@@ -216,7 +216,7 @@ class DWA():
                 axis=0,
             ))
         # Task 2_b: Add target distance term for robot following
-        elif self.dwa_mode == 'task2_b':
+        elif self.obj_fun == '2b':
             score_target_dist = self.score_target_distance(paths, goal_pose)
             score_target_dist = normalize(score_target_dist)
             
