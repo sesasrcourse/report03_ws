@@ -92,10 +92,10 @@ class ControllerNode(Node):
         if len(msg.landmarks) == 0:
             return
         self.last_landmark_ts = self.get_clock().now().nanoseconds
-        if self.first_time_tag_seen:
-            self.first_time_tag_seen = False
-            self.controller_step = 0
-            self.goal_reached = False
+        # if self.first_time_tag_seen:
+        self.first_time_tag_seen = False
+        self.controller_step = 0
+        self.goal_reached = False
         
         lm: Landmark = msg.landmarks[0]
         range_val = lm.range
