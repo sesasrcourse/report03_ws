@@ -158,11 +158,21 @@ class ControllerNode(Node):
         self.robot_state = np.array([0.0, 0.0, 0.0, v, w])
 
     def control_callback(self):
+
+        dist_to_goal = np.linalg.norm(self.goal_pose)  if self.goal_pose is not None else float('inf')
+
         self.get_logger().info(
             f"goal_pose: {self.goal_pose}\n"
             f"goal_reached: {self.goal_reached}\n"
             f"collision_flag: {self.collision_flag}\n"
         )
+
+        # Provide intermediate task feedback
+        if self.global_ctrl_step % self.feedback_rate == 0: 
+            feedback_msg = String()
+            feedback_msg.data = f'Distance to goal {dist_to_goal:.2f}m at step {self.global_ctrl_step}\nGoal (robot frame): [{self.goal_pose[0]:.2f}, {self.goal_pose[1]:.2f}]'
+            self.feedback_pub.publish(feedback_msg)
+
         self.goal_reached_pub.publish(Bool(data = self.goal_reached))
         if self.goal_pose is not None:
             self.goal_pose_pub.publish(Point(x=self.goal_pose[0], y=self.goal_pose[1]))
@@ -183,9 +193,9 @@ class ControllerNode(Node):
         if self.goal_pose is None:
             self.publish_stop_cmd()
             return
-        
-        # Check if goal reached
-        if self.goal_reached:
+
+        if dist_to_goal < self.dwa.goal_dist_tol: 
+            self.goal_reached = True
             feedback_msg = String()
             feedback_msg.data = f"Goal Reached {self.get_clock().now().nanoseconds}"
             self.feedback_pub.publish(feedback_msg)
@@ -209,18 +219,6 @@ class ControllerNode(Node):
                 
             self.publish_stop_cmd()
             return
-        
-        # Check if goal reached (robot frame: goal relativo a robot in origine)
-        dist_to_goal = np.linalg.norm(self.goal_pose)
-        if dist_to_goal < self.dwa.goal_dist_tol: 
-            self.goal_reached = True
-            return 
-        
-        # Provide intermediate task feedback
-        if self.global_ctrl_step % self.feedback_rate == 0: 
-            feedback_msg = String()
-            feedback_msg.data = f'Distance to goal {dist_to_goal:.2f}m at step {self.global_ctrl_step}\nGoal (robot frame): [{self.goal_pose[0]:.2f}, {self.goal_pose[1]:.2f}]'
-            self.feedback_pub.publish(feedback_msg)
         
         # Compute command for the robot with DWA controller (robot-centric state)
         u = self.dwa.compute_cmd(self.goal_pose, self.robot_state, self.obstacles)
