@@ -224,7 +224,7 @@ class ControllerNode(Node):
         
         # Compute command for the robot with DWA controller (robot-centric state)
         u = self.dwa.compute_cmd(self.goal_pose, self.robot_state, self.obstacles)
-        
+
         vel_msg = Twist()
         vel_msg.linear.x = u[0]
         vel_msg.angular.z = u[1]

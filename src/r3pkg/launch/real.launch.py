@@ -69,21 +69,10 @@ def set_up(context):
         ExecuteProcess(
             cmd=[
                 'ros2', 'bag', 'record',
-                '/ground_truth',
-                '/scan',
-                '/camera/landmarks',
-                '/odom',
-                '/cmd_vel',
-                '/goal_reached',
-                '/goal_pose',
-                '/collision_flag',
-                '/clock',
-                '/rosout',
-                '/goal_marker',
-                '/dwa_feedback',
-                '/filter_scan',
-                '/dynamic_goal_pose',
-                '/robot_description',
+                '--all',
+                # '--exclude',
+                # '/camera/e.g.',
+                # '/camera/d',
                 '-o', bag
             ]
         )
