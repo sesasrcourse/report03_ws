@@ -70,9 +70,8 @@ def set_up(context):
             cmd=[
                 'ros2', 'bag', 'record',
                 '--all',
-                # '--exclude',
-                # '/camera/e.g.',
-                # '/camera/d',
+                '--exclude',
+                '/battery_state|/camera/camera/.*',
                 '-o', bag
             ]
         )
