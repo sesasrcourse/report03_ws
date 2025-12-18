@@ -29,7 +29,7 @@ class ControllerNode(Node):
         self.MIN_SCAN_VALUE = 0.12
         self.MAX_SCAN_VALUE = 3.5 
         self.num_ranges = 20 # number of obstacle points to consider
-        self.collision_tol = 0.15
+        self.collision_tol = 0.25
 
         # Goal parameters
         self.goal_pose = None 
