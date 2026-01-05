@@ -1,0 +1,138 @@
+\section{Design}
+\label{sec:design}
+
+\subsection{System Architecture}
+The navigation system is implemented as a ROS 2 node (\texttt{controller\_node}) that integrates the Dynamic Window Approach (DWA) algorithm for obstacle avoidance and dynamic goal tracking. The system operates at a fixed control frequency of 15 Hz, managed by a ROS 2 timer callback that executes the main control loop.
+
+The system is designed to work both in simulation (using Gazebo with TurtleBot3) and on the real robot platform, with conditional logic handling the differences in goal detection methods: odometry-based goals in simulation versus AprilTag-based visual detection on the physical robot.
+
+\subsection{ROS 2 Node Structure}
+
+\subsubsection{Publishers and Subscribers}
+The controller node establishes communication through the following main topics:
+
+\textbf{Subscribers:}
+\begin{itemize}
+    \item \texttt{/odom} (Odometry): Receives robot pose and velocity estimates
+    \item \texttt{/scan} (LaserScan): Receives LiDAR measurements for obstacle detection
+    \item \texttt{/dynamic\_goal\_pose} (Odometry): Receives goal positions in simulation mode
+    \item \texttt{/camera/landmarks} (LandmarkArray): Receives AprilTag detections on real robot
+\end{itemize}
+
+\textbf{Publishers:}
+\begin{itemize}
+    \item \texttt{/cmd\_vel} (Twist): Sends velocity commands to the robot
+    \item \texttt{/goal\_marker} (Marker): Visualizes the current goal in RViz
+    \item \texttt{/dwa\_feedback} (String): Provides navigation task feedback
+    \item \texttt{/goal\_reached}, \texttt{/collision\_flag} (Bool): Publishes task status flags
+    \item \texttt{/filter\_scan} (MarkerArray): Visualizes filtered LiDAR points
+\end{itemize}
+
+\subsubsection{State Management}
+The node maintains two distinct state representations:
+\begin{itemize}
+    \item \textbf{Global state} $[x_{global}, y_{global}, \theta_{global}, v, \omega]$: Updated from odometry, used for coordinate transformations
+    \item \textbf{Robot-centric state} $[0, 0, 0, v, \omega]$: Always centered at the robot's origin, used directly by DWA for trajectory planning
+\end{itemize}
+
+This dual-state design simplifies the DWA implementation by maintaining goals and obstacles in the robot's reference frame, eliminating the need for continuous coordinate transformations during trajectory evaluation.
+
+\subsection{LiDAR Scan Processing}
+
+The LiDAR data processing pipeline implements several filtering stages to ensure robust obstacle detection while maintaining computational efficiency:
+
+\begin{enumerate}
+    \item \textbf{Range validation}: Invalid measurements (NaN, Inf) are handled by assigning maximum range (3.5 m) to avoid false obstacle detections
+    \item \textbf{Distance filtering}: Only measurements within the effective range [0.12 m, 3.5 m] are considered for obstacle detection
+    \item \textbf{Angular sectoring}: The full 360° scan (could be less in real robot) is divided into $N_{ranges} = 20$ angular sectors to reduce computational load
+    \item \textbf{Minimum distance selection}: Within each sector, only the closest obstacle point is retained, representing the most critical obstacle in that direction
+    \item \textbf{Coordinate transformation}: Range-bearing measurements are converted to Cartesian coordinates $(x, y)$ in the robot's reference frame
+\end{enumerate}
+
+This filtering approach reduces the number of obstacle points to 20, significantly improving computational performance while maintaining sufficient environmental representation for safe navigation.
+
+\subsection{Goal Management}
+
+The goal manager implements dynamic target switching capabilities, allowing the robot to update its navigation objective at any time during task execution. Two distinct modes are implemented:
+
+\textbf{Simulation mode:} Goals are received as odometry messages and transformed from the global frame to the robot's local frame through rotation by $-\theta$:
+\begin{equation}
+    \begin{bmatrix} x_{robot} \\ y_{robot} \end{bmatrix} = 
+    \begin{bmatrix} \cos(-\theta) & -\sin(-\theta) \\ \sin(-\theta) & \cos(-\theta) \end{bmatrix}
+    \begin{bmatrix} x_{goal} - x_{robot,global} \\ y_{goal} - y_{robot,global} \end{bmatrix}
+\end{equation}
+
+\textbf{Real robot mode:} AprilTag detections provide range-bearing measurements that are directly converted to robot-frame coordinates:
+\begin{equation}
+    \begin{bmatrix} x_{goal} \\ y_{goal} \end{bmatrix} = 
+    \begin{bmatrix} range \cdot \cos(bearing) \\ range \cdot \sin(bearing) \end{bmatrix}
+\end{equation}
+
+A timeout mechanism resets the goal if no landmark is detected, preventing the robot from pursuing stale targets.
+
+\subsection{Safety Mechanisms}
+
+Multiple safety layers are implemented to ensure collision-free navigation:
+
+\begin{enumerate}
+    \item \textbf{Collision detection}: If any LiDAR measurement falls below the collision tolerance (0.25 m), the robot immediately stops and sets a collision flag. If the obstacle is no longer detected, navigation resumes.
+    \item \textbf{DWA trajectory scoring}: Trajectories that would bring the robot closer than $r_{robot} + d_{collision}$ (where $r_{robot} = 0.2$ m) to any obstacle receive a heavy penalty ($-100$) in the objective function
+    \item \textbf{Timeout protection}: Navigation tasks exceeding 300 control steps are automatically terminated
+    \item \textbf{Sensor validation}: Commands are only computed when both LiDAR data and a valid goal are available
+\end{enumerate}
+
+\subsection{DWA Implementation and Objective Functions}
+
+The DWA controller generates trajectories by sampling the dynamic window of feasible velocities and evaluating them according to an objective function. Three variants were implemented:
+
+\subsubsection{Task 1: Original DWA}
+The standard objective function balances three terms:
+\begin{equation}
+    J = \alpha \cdot heading + \beta \cdot vel + \gamma \cdot dist_{obst}
+\end{equation}
+
+where:
+\begin{itemize}
+    \item \textbf{heading}: measures alignment between trajectory endpoint and goal direction.
+    \item \textbf{vel}: promotes forward motion by scoring linear velocity, enhanced by an exponential term that increases as the robot approaches the goal
+    \item \textbf{dist\_obst}: rewards maintaining distance from obstacles, with collision penalties for unsafe trajectories
+\end{itemize}
+
+Key parameters were tuned as: $\alpha = 0.1$, $\beta = 0.2$, $\gamma = 0.2$, with velocity samples $N_v = 20$ and angular velocity samples $N_\omega = 20$, resulting in 400 evaluated trajectories per control cycle.
+
+\subsubsection{Task 2a: Velocity Reduction Near Goal}
+An additional penalty term was introduced to slow down the robot when approaching the goal:
+\begin{equation}
+    vel' = -v \cdot \left(1 - \frac{d_{goal}}{d_{threshold}}\right), \quad \text{if } d_{goal} < d_{threshold}
+\end{equation}
+
+where $d_{threshold} = 0.25$ m defines the activation range. The penalty increases linearly as the robot gets closer to the goal, effectively reducing the selected velocities in the final approach phase.
+
+\subsubsection{Task 2b: Target Following}
+For dynamic target following, a distance maintenance term was added:
+\begin{equation}
+    J = \alpha \cdot heading + \beta \cdot vel + \gamma \cdot dist_{obst} + \delta \cdot dist_{target}
+\end{equation}
+
+The $dist_{target}$ term is computed as:
+\begin{equation}
+    dist_{target} = \exp\left(-\frac{|d_{actual} - d_{desired}|}{d_{desired}}\right)
+\end{equation}
+
+with $d_{desired} = 0.3$ m. Additional penalties (50\% reduction if $d < 0.5 \cdot d_{desired}$, 70\% if $d > 2.0 \cdot d_{desired}$) discourage getting too close or too far from the target, ensuring optimal visual tracking conditions.
+
+\subsection{Control Loop Execution}
+
+The main control callback implements the following execution flow:
+
+\begin{enumerate}
+    \item Check goal reach condition: $\|goal_{robot}\| < d_{tol}$ (0.2 m)
+    \item Validate sensor data availability and goal validity
+    \item Check for collision, timeout, or goal reached conditions
+    \item If all checks pass: compute velocity command using DWA
+    \item Publish velocity command, status flags, and periodic feedback
+    \item Increment control step counter
+\end{enumerate}
+
+When any termination condition is met (goal reached, collision, timeout, or no goal), the robot publishes a zero velocity command to ensure safe stopping.
+
