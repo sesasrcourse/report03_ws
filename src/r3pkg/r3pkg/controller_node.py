@@ -169,7 +169,10 @@ class ControllerNode(Node):
         # Provide intermediate task feedback
         if self.global_ctrl_step % self.feedback_rate == 0: 
             feedback_msg = String()
-            feedback_msg.data = f'Distance to goal {dist_to_goal:.2f}m at step {self.global_ctrl_step}\nGoal (robot frame): [{self.goal_pose[0]:.2f}, {self.goal_pose[1]:.2f}]'
+            if self.goal_pose is None:
+                feedback_msg.data = f'No goal set at step {self.global_ctrl_step}'
+            else:
+                feedback_msg.data = f'Distance to goal {dist_to_goal:.2f}m at step {self.global_ctrl_step}\nGoal (robot frame): [{self.goal_pose[0]:.2f}, {self.goal_pose[1]:.2f}]'
             self.feedback_pub.publish(feedback_msg)
 
         self.goal_reached_pub.publish(Bool(data = self.goal_reached))
