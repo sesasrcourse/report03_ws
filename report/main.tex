@@ -1,0 +1,82 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Packages ---
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{amsmath, amssymb}
+\usepackage{enumitem}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{titlesec}
+\usepackage{xparse}
+\usepackage{subcaption}
+\usepackage{pgffor} % only provides \foreach
+\usepackage{xcolor}
+
+\input{macros}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue
+}
+
+\graphicspath{{img/}}
+\setlength{\parindent}{0pt}
+
+
+\begin{document}
+\begin{titlepage}
+    \centering
+    \vspace*{1cm}
+    \includegraphics[width=0.35\textwidth]{img/logo_poli.png}\par
+    \vspace{1cm}
+    {\LARGE \textbf{\university}\par}
+    \vspace{0.3cm}
+    {\large \department\par}
+    \vspace{0.3cm}
+    {\Large \degree\par}
+    \vspace{0.6cm}
+    {\Large \academicyear\par}
+    \vspace{0.8cm}
+    {\LARGE \textbf{\course}\par}
+    \vspace{0.8cm}
+    {\LARGE \textbf{\reporttitle{3}}\par}
+    \vspace{0.6cm}
+    {\large \reportdate{12}{01}{26} \par}
+    \vfill
+    {\large \groupnumber \par}
+    \vspace{0.6cm}
+    {\large
+    % --- EDIT THE NAMES BELOW ---
+    \student{Marco Coronelli}{S348664}
+    \student{Tobia Giorgi}{S336224}
+    \student{Niccolò Malgeri}{S345370}
+    \student{Fabio Veroli}{S336301}
+    }
+    \vspace*{0.5cm}
+\end{titlepage}
+\tableofcontents
+\newpage
+
+% --- Body ---
+
+\section{Objective}
+\label{sec:objective}
+The aim of this laboratory activity is to:
+\begin{itemize}
+  \item Develop a ROS 2 package to run control algorithms on a mobile robot.
+  \item Obstacle avoidance and dynamic goal chasing with Dynamic Window Approach.
+  \item Test the developed algorithms on the real robots following an AprilTag detected through RGB camera.
+\end{itemize}
+
+\input{sections/design.tex}
+\input{sections/experiments.tex}
+% \newpage
+\input{sections/res_and_discussion.tex}
+\end{document}

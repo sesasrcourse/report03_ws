@@ -1,0 +1,51 @@
+% --- Metadata Macros (edit these) ---
+\newcommand{\university}{Politecnico di Torino}
+\newcommand{\department}{Department of Electronics and Telecommunications}
+\newcommand{\degree}{Master's degree in Mechatronic Engineering}
+\newcommand{\academicyear}{2025/2026}
+\newcommand{\course}{Sensors, Embedded Systems and Algorithms for Service Robotics}
+\newcommand{\reporttitle}[1]{Report #1} % e.g., "Report 1"
+\newcommand{\reportdate}[3]{
+    #1/#2/#3
+}    % or "Date, \_\_\_"
+\newcommand{\groupnumber}{Group 202}
+
+% Helper to list students as "Name Surname -- S123456"
+\newcommand{\student}[2]{#1 -- #2\\}
+
+% --- Single picture with custom width ---
+% Usage: \singlepic{<file>}{<caption>}{<label>}{<width>}
+\newcommand{\singlepic}[4]{%
+  \begin{figure}[h!]
+    \centering
+    \includegraphics[width=#4\linewidth]{#1}
+    \caption{#2}
+    \label{fig:#3}
+  \end{figure}%
+}
+
+% --- Helper for subfigures ---
+% Usage: \getthree{<file>}{<caption>}{<label>}{<width>}
+\newcommand{\getthree}[4]{%
+  \begin{subfigure}{#4\linewidth} % 4 per row
+    \centering
+    \includegraphics[width=\linewidth]{#1}
+    \caption{#2}
+    \label{fig:#3}
+  \end{subfigure}%
+}
+
+% --- Multipics with main caption and subfigure width ---
+% Usage: \multipics{<main caption>}{<subfigure width>}{ {file}{caption}{label}, ... }
+\newcommand{\multipics}[4]{%
+  \begin{figure}[h!]
+    \centering
+    \foreach \entry [count=\i] in {#3} {%
+      % \entry is expected to be a brace-group triple: {file}{caption}{label}
+      \expandafter\getthree\entry{#2}\relax
+      \ifnum\i=2 \par\fi % new line after 4 images
+    }%
+    \caption{#1}
+    \label{fig:#4}
+  \end{figure}%
+}
