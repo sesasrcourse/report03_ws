@@ -1,0 +1,74 @@
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Experimental Setup}
+
+The navigation system is evaluated in two distinct environments to assess its performance under different conditions: a simulated environment using Gazebo and a real-world deployment on a TurtleBot3 Burger platform.
+
+\subsubsection{Simulation Environment}
+The simulation experiments are conducted using:
+\begin{itemize}
+    \item Gazebo with TurtleBot3 Burger model
+    \item Simulated LiDAR sensor (360° field of view)
+    \item Static and dynamic obstacle configurations
+    \item Ground-truth odometry for pose estimation
+    \item Dynamic goal generation through odometry messages
+\end{itemize}
+
+
+\subsubsection{Real Robot Platform}
+Physical experiments are performed using:
+\begin{itemize}
+    \item TurtleBot3 Burger robot 
+    \item AprilTag as the moving target
+\end{itemize}
+
+The real robot experiments are conducted in a laboratory environment with known obstacles (boxes, furniture) arranged to create navigation challenges. The target is moved manually while holding an AprilTag marker, creating dynamic goal positions for the robot to follow.
+
+\subsection{Evaluation Metrics}
+
+To quantitatively assess the navigation system performance, the following metrics are recorded during experimental trials:
+
+\begin{itemize}
+    \item \textbf{Success rate}: Percentage of trials where the robot successfully reached the goal without collisions or timeouts
+    \item \textbf{Time of tracking}: amount of time during which the robot did not lose the target. 
+    \item \textbf{Root Mean Square Error (RMSE)}: of the target distance and bearing from the target moving robot, considering as optimal value the distance we define in the objective function of the DWA and 0 for the bearing angle. 
+    \item \textbf{Average and Minimum distance to obstacles} using the /scan LiDAR data. 
+\end{itemize}
+
+\subsection{Parameter Configuration}
+
+The DWA controller is configured with the following parameters, tuned through iterative testing in simulation:
+
+\begin{table}[h]
+\centering
+\caption{DWA Controller Parameters}
+\label{tab:dwa_params}
+\begin{tabular}{lcc}
+\hline
+\textbf{Parameter} & \textbf{Value} & \textbf{Unit} \\
+\hline
+Control frequency & 15 & Hz \\
+Simulation time& 2.0 & s \\
+Time granularity & 0.1 & s \\
+Linear velocity samples & 20 & - \\
+Angular velocity samples & 20 & - \\
+Goal distance tolerance & 0.2 & m \\
+Collision tolerance (obj) & 0.25 & m \\
+Collision tolerance (stop) & 0.5 & m \\
+Max linear velocity & 0.22 & m/s \\
+Max angular velocity & 2.84 & rad/s \\
+Max linear acceleration & 0.22 & m/s² \\
+Max angular acceleration & $\pi$ & rad/s² \\
+Robot radius & 0.2 & m \\
+\hline
+\multicolumn{3}{c}{\textit{Objective function weights}} \\
+\hline
+$\alpha$ (heading) & 0.1 & - \\
+$\beta$ (velocity) & 0.2 & - \\
+$\gamma$ (obstacle) & 0.2 & - \\
+$\delta$ (target distance, Task 2b) & 0.1 & - \\
+\hline
+\end{tabular}
+\end{table}
+

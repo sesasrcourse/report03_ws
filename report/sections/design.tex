@@ -68,7 +68,7 @@ The goal manager implements dynamic target switching capabilities, allowing the 
     \begin{bmatrix} range \cdot \cos(bearing) \\ range \cdot \sin(bearing) \end{bmatrix}
 \end{equation}
 
-A timeout mechanism resets the goal if no landmark is detected, preventing the robot from pursuing stale targets.
+A timeout mechanism resets the goal if no landmark is detected, preventing the robot from pursuing outdated targets.
 
 \subsection{Safety Mechanisms}
 
@@ -83,7 +83,7 @@ Multiple safety layers are implemented to ensure collision-free navigation:
 
 \subsection{DWA Implementation and Objective Functions}
 
-The DWA controller generates trajectories by sampling the dynamic window of feasible velocities and evaluating them according to an objective function. Three variants were implemented:
+The DWA controller generates trajectories by sampling the dynamic window of feasible velocities and evaluating them according to an objective function. Three variants are implemented:
 
 \subsubsection{Task 1: Original DWA}
 The standard objective function balances three terms:
@@ -98,10 +98,8 @@ where:
     \item \textbf{dist\_obst}: rewards maintaining distance from obstacles, with collision penalties for unsafe trajectories
 \end{itemize}
 
-Key parameters were tuned as: $\alpha = 0.1$, $\beta = 0.2$, $\gamma = 0.2$, with velocity samples $N_v = 20$ and angular velocity samples $N_\omega = 20$, resulting in 400 evaluated trajectories per control cycle.
-
 \subsubsection{Task 2a: Velocity Reduction Near Goal}
-An additional penalty term was introduced to slow down the robot when approaching the goal:
+An additional penalty term is introduced to slow down the robot when approaching the goal:
 \begin{equation}
     vel' = -v \cdot \left(1 - \frac{d_{goal}}{d_{threshold}}\right), \quad \text{if } d_{goal} < d_{threshold}
 \end{equation}
@@ -109,7 +107,7 @@ An additional penalty term was introduced to slow down the robot when approachin
 where $d_{threshold} = 0.25$ m defines the activation range. The penalty increases linearly as the robot gets closer to the goal, effectively reducing the selected velocities in the final approach phase.
 
 \subsubsection{Task 2b: Target Following}
-For dynamic target following, a distance maintenance term was added:
+For dynamic target following, a distance maintenance term is added:
 \begin{equation}
     J = \alpha \cdot heading + \beta \cdot vel + \gamma \cdot dist_{obst} + \delta \cdot dist_{target}
 \end{equation}
