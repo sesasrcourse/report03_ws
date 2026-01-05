@@ -29,7 +29,6 @@ class ControllerNode(Node):
         self.MIN_SCAN_VALUE = 0.12
         self.MAX_SCAN_VALUE = 3.5 
         self.num_ranges = 20 # number of obstacle points to consider
-        self.collision_tol = 0.25
 
         # Goal parameters
         self.goal_pose = None 
@@ -60,7 +59,7 @@ class ControllerNode(Node):
             weight_angle = self.weight_angle, # weight for heading angle to goal
             weight_vel = self.weight_vel, # weight for forward velocity
             weight_obs = self.weight_obs, # weight for obstacle distance
-            collision_tol = self.collision_tol, # min distance to obstacles
+            collision_tol = self.collision_tol_obj, # for DWA objective function, tol to consider collision
             obj_fun = self.obj_fun, # DWA objective function: '1', '2a', '2b'
             init_pose = self.state[0:3], # initial robot pose
             max_linear_acc = self.max_linear_acc, # m/s^2
@@ -313,7 +312,7 @@ class ControllerNode(Node):
 
         # Implement a safety mechanism to stop the robot and avoid collisions.
         # TODO check if this works
-        if np.any(np.array(min_ranges) <= self.collision_tol):
+        if np.any(np.array(min_ranges) <= self.collision_stop_tol):
             self.get_logger().info("COLLISION DETECTED: STOP")
             self.collision_flag = True
         else: 
@@ -390,8 +389,11 @@ class ControllerNode(Node):
         self.declare_parameter('weight_obs', 0.2)
         self.weight_obs = self.get_parameter('weight_obs').get_parameter_value().double_value
 
-        self.declare_parameter('collision_tol', 0.5)
-        self.collision_tol = self.get_parameter('collision_tol').get_parameter_value().double_value
+        self.declare_parameter('collision_tol_obj', 0.5)
+        self.collision_tol_obj = self.get_parameter('collision_tol_obj').get_parameter_value().double_value
+
+        self.declare_parameter('collision_stop_tol', 0.25)
+        self.collision_stop_tol = self.get_parameter('collision_stop_tol').get_parameter_value().double_value
         
         self.declare_parameter('obj_fun', value='1')
         self.obj_fun = self.get_parameter('obj_fun').get_parameter_value().string_value
@@ -430,7 +432,7 @@ class ControllerNode(Node):
                                 f"- weight_angle: {self.weight_angle}\t({type(self.weight_angle)})\n"
                                 f"- weight_vel: {self.weight_vel}\t({type(self.weight_vel)})\n"
                                 f"- weight_obs: {self.weight_obs}\t({type(self.weight_obs)})\n"
-                                f"- collision_tol: {self.collision_tol}\t({type(self.collision_tol)})\n"
+                                f"- collision_tol_obj: {self.collision_tol_obj}\t({type(self.collision_tol_obj)})\n"
                                 f"- obj_fun: {self.obj_fun}\t({type(self.obj_fun)})\n"
                                 f"- max_linear_acc: {self.max_linear_acc}\t({type(self.max_linear_acc)})\n"
                                 f"- max_ang_acc: {self.max_ang_acc}\t({type(self.max_ang_acc)})\n"
