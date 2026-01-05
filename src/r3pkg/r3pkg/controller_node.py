@@ -105,22 +105,28 @@ class ControllerNode(Node):
         range_val = lm.range
         bearing = lm.bearing
         
-        # Compute goal position in robot frame
+        # Compute goal position in robot frame (for DWA)
         goal_x_robot = range_val * np.cos(bearing)
         goal_y_robot = range_val * np.sin(bearing)
         self.goal_pose = np.array([goal_x_robot, goal_y_robot])
 
-        # self.get_logger().info(f"GOAL in robot frame: x={goal_x_robot:.2f}, y={goal_y_robot:.2f} (range={range_val:.2f}, bearing={bearing:.2f})")
+        # Convert to odom frame for consistent visualization with simulation
+        theta = self.state[2]
+        goal_x_odom = self.state[0] + goal_x_robot * np.cos(theta) - goal_y_robot * np.sin(theta)
+        goal_y_odom = self.state[1] + goal_x_robot * np.sin(theta) + goal_y_robot * np.cos(theta)
         
-        # Visualization Marker in robot frame
+        # self.get_logger().info(f"GOAL: robot=({goal_x_robot:.2f},{goal_y_robot:.2f}) -> odom=({goal_x_odom:.2f},{goal_y_odom:.2f})")
+        
+        # Visualization Marker in global frame (odom)
         goal = Marker() 
-        goal.header.frame_id = "base_link"
+        goal.header.stamp = self.get_clock().now().to_msg()
+        goal.header.frame_id = "odom"
         goal.ns = "basic_shapes"
         goal.id = 0
         goal.type = Marker.CUBE
         goal.action = Marker.ADD
-        goal.pose.position.x = goal_x_robot
-        goal.pose.position.y = goal_y_robot
+        goal.pose.position.x = goal_x_odom
+        goal.pose.position.y = goal_y_odom
         goal.pose.position.z = 0.0
         goal.pose.orientation.x = 0.0
         goal.pose.orientation.y = 0.0
@@ -177,7 +183,11 @@ class ControllerNode(Node):
 
         self.goal_reached_pub.publish(Bool(data = self.goal_reached))
         if self.goal_pose is not None:
-            self.goal_pose_pub.publish(Point(x=self.goal_pose[0], y=self.goal_pose[1]))
+            # Convert goal from robot frame to odom frame
+            theta = self.state[2]
+            goal_x_odom = self.state[0] + self.goal_pose[0] * np.cos(theta) - self.goal_pose[1] * np.sin(theta)
+            goal_y_odom = self.state[1] + self.goal_pose[0] * np.sin(theta) + self.goal_pose[1] * np.cos(theta)
+            self.goal_pose_pub.publish(Point(x=goal_x_odom, y=goal_y_odom))
         self.collision_flag_pub.publish(Bool(data=self.collision_flag))
 
         # Check if sensor data is available
