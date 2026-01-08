@@ -95,6 +95,7 @@ class ControllerNode(Node):
     def landmark_callback(self, msg: LandmarkArray):
         """Real Robot's Goal Manager: compute goal from AprilTag (range/bearing) -> robot frame"""
         if len(msg.landmarks) == 0:
+            self.goal_pose = None
             return
         self.last_landmark_ts = self.get_clock().now().nanoseconds
         # if self.first_time_tag_seen:
@@ -191,7 +192,7 @@ class ControllerNode(Node):
             self.goal_pose_pub.publish(Point(x=goal_x_odom, y=goal_y_odom))
         self.collision_flag_pub.publish(Bool(data=self.collision_flag))
 
-        # Check if sensor data is available
+        # Check if sensor data is available at the beginnning
         if len(self.obstacles) == 0 or self.first_time_tag_seen:    
             self.publish_stop_cmd()
             return
@@ -205,7 +206,7 @@ class ControllerNode(Node):
         # Check if goal pose is set
         if self.goal_pose is None:
             self.publish_stop_cmd()
-            return
+            # return
 
         if dist_to_goal < self.dwa.goal_dist_tol: 
             self.goal_reached = True
