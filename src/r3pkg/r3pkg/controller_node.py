@@ -168,11 +168,11 @@ class ControllerNode(Node):
 
         dist_to_goal = np.linalg.norm(self.goal_pose)  if self.goal_pose is not None else float('inf')
 
-        self.get_logger().info(
-            f"goal_pose: {self.goal_pose}\n"
-            f"goal_reached: {self.goal_reached}\n"
-            f"collision_flag: {self.collision_flag}\n"
-        )
+        # self.get_logger().info(
+        #     f"goal_pose: {self.goal_pose}\n"
+        #     f"goal_reached: {self.goal_reached}\n"
+        #     f"collision_flag: {self.collision_flag}\n"
+        # )
 
         # Provide intermediate task feedback
         if self.global_ctrl_step % self.feedback_rate == 0: 
@@ -208,6 +208,7 @@ class ControllerNode(Node):
             self.publish_stop_cmd()
             # return
 
+        self.get_logger().info(f'dist_to_goal: {dist_to_goal}\nself.dwa.goal_dist_tol: {self.dwa.goal_dist_tol}\ndist_to_goal < self.dwa.goal_dist_tol: {dist_to_goal < self.dwa.goal_dist_tol}')
         if dist_to_goal < self.dwa.goal_dist_tol: 
             self.goal_reached = True
             feedback_msg = String()
