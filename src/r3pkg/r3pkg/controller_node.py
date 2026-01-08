@@ -197,11 +197,11 @@ class ControllerNode(Node):
             self.publish_stop_cmd()
             return
         
-        # Check landmark timeout (only for real robot, not simulation)
-        if not self.simulation:
-            # If landmark not seen for >1/6 Hz seconds, reset goal
-            if self.get_clock().now().nanoseconds - self.last_landmark_ts > 1e9/6.0:
-                self.goal_pose = None
+        # # Check landmark timeout (only for real robot, not simulation)
+        # if not self.simulation:
+        #     # If landmark not seen for >1/6 Hz seconds, reset goal
+        #     if self.get_clock().now().nanoseconds - self.last_landmark_ts > 1e9/6.0:
+        #         self.goal_pose = None
 
         # Check if goal pose is set
         if self.goal_pose is None:
@@ -234,14 +234,15 @@ class ControllerNode(Node):
             self.publish_stop_cmd()
             return
         
-        # Compute command for the robot with DWA controller (robot-centric state)
-        u = self.dwa.compute_cmd(self.goal_pose, self.robot_state, self.obstacles)
+        if self.goal_pose is not None:
+            # Compute command for the robot with DWA controller (robot-centric state)
+            u = self.dwa.compute_cmd(self.goal_pose, self.robot_state, self.obstacles)
 
-        vel_msg = Twist()
-        vel_msg.linear.x = u[0]
-        vel_msg.angular.z = u[1]
-        self.pub_vel.publish(vel_msg)
-        self.get_logger().info(f"CMD_VEL: u: {u}")
+            vel_msg = Twist()
+            vel_msg.linear.x = u[0]
+            vel_msg.angular.z = u[1]
+            self.pub_vel.publish(vel_msg)
+            self.get_logger().info(f"CMD_VEL: u: {u}")
         
         self.controller_step += 1
         self.global_ctrl_step += 1
