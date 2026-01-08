@@ -75,6 +75,7 @@ class ControllerNode(Node):
         self.pub_vel = self.create_publisher(Twist, '/cmd_vel', 10)
         self.goal_pub = self.create_publisher(Marker, '/goal_marker', 10)
         self.feedback_pub = self.create_publisher(String, '/dwa_feedback', 10)
+        self.task_status_pub = self.create_publisher(String, '/task_status', 10)
         self.goal_reached_pub = self.create_publisher(Bool, '/goal_reached', 10)
         self.goal_pose_pub = self.create_publisher(Point, '/goal_pose', 10)
         self.collision_flag_pub = self.create_publisher(Bool, '/collision_flag', 10)
@@ -209,8 +210,8 @@ class ControllerNode(Node):
         if dist_to_goal < self.dwa.goal_dist_tol: 
             self.goal_reached = True
             feedback_msg = String()
-            feedback_msg.data = f"Goal Reached {self.get_clock().now().nanoseconds}"
-            self.feedback_pub.publish(feedback_msg)
+            feedback_msg.data = "Goal"
+            self.task_status_pub.publish(feedback_msg)
             self.publish_stop_cmd()
             return
         
@@ -218,7 +219,7 @@ class ControllerNode(Node):
         if self.controller_step >= self.max_num_steps: 
             feedback_msg = String()
             feedback_msg.data = "Timeout"
-            self.feedback_pub.publish(feedback_msg)
+            self.task_status_pub.publish(feedback_msg)
             
             self.publish_stop_cmd()
             return
@@ -227,7 +228,7 @@ class ControllerNode(Node):
         if self.collision_flag:
             feedback_msg = String()
             feedback_msg.data = "Collision"
-            self.feedback_pub.publish(feedback_msg)
+            self.task_status_pub.publish(feedback_msg)
                 
             self.publish_stop_cmd()
             return
