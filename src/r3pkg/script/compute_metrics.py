@@ -24,9 +24,9 @@ def read_bag(bag, sim_flag):
     
     # Select topics based on sim or real
     if sim_flag:
-        topics = ['/ground_truth', '/scan', '/camera/landmarks', '/cmd_vel', '/goal_pose']
+        topics = ['/ground_truth', '/scan', '/dynamic_goal_pose', '/cmd_vel', '/goal_pose', '/task_status']
     else:
-        topics = ['/odom', '/scan', '/camera/landmarks', '/cmd_vel', '/goal_pose']
+        topics = ['/odom', '/scan', '/camera/landmarks', '/cmd_vel', '/goal_pose', '/task_status']
     
     reader = Rosbag2Reader(rosbag_path, topics)
     print(f'Selected topics: {reader.selected_topics}')
@@ -42,6 +42,7 @@ def read_bag(bag, sim_flag):
     landmark_data = []  # list of landmarks
     goal_time = []
     goal_data = []  # (x, y, theta)
+    task_status = [] # GOAL, COLLISION, TIMEOUT
     
     for topic_name, msg, t in reader:
         if topic_name in ["/ground_truth", "/odom"]:
@@ -80,6 +81,10 @@ def read_bag(bag, sim_flag):
             goal_time.append(t)  # Use bag timestamp
             goal_data.append([msg.x, msg.y, 0.0])  # No orientation in Point message
 
+        elif topic_name == "/task_status":
+            task_status.append(msg.data)
+
+
     # Convert to numpy arrays
     pose_time = np.array(pose_time)
     pose_data = np.array(pose_data)
@@ -104,6 +109,7 @@ def read_bag(bag, sim_flag):
         'landmark_data': landmark_data,
         'goal_time': np.array(goal_time),
         'goal_data': np.array(goal_data) if len(goal_data) > 0 else np.array([]),
+        'task_status': np.array(task_status),
         'sim_flag': sim_flag
     }
 
@@ -203,6 +209,8 @@ def compute_tracking_metrics(data, target_distance=0.5, tracking_threshold=1.0):
     """
     landmark_data = data['landmark_data']
     landmark_time = data['landmark_time']
+    goal_time = data['goal_time']
+    task_status = data['task_status']
     
     if len(landmark_data) == 0:
         print("No landmark data available for tracking metrics")
@@ -228,9 +236,30 @@ def compute_tracking_metrics(data, target_distance=0.5, tracking_threshold=1.0):
     
     distances = np.array(distances)
     bearings = np.array(bearings)
+
+    # Success Rate: percentage when target was reached
+    s_rate = 0
+    c_rate = 0
+    t_rate = 0
+    for status in task_status:
+        if status == "Goal":
+            s_rate += 1
+        elif status == "Collision":
+            c_rate += 1
+        else:
+            t_rate += 1
+
+    s_count = s_rate
+    c_count = c_rate
+    t_count = t_rate
+
+    s_rate = (s_rate / len(task_status)) * 100
+    c_rate = (c_rate / len(task_status)) * 100
+    t_rate = (t_rate / len(task_status)) * 100
     
     # Time of tracking: percentage when target was detected
-    tracking_percentage = (len(distances) / len(landmark_data)) * 100
+    #tracking_percentage = (len(distances) / len(landmark_data)) * 100
+    tracking_percentage = (len(goal_time) / len(landmark_time)) * 100
     
     # RMSE of distance from target (compared to desired distance)
     distance_errors = distances - target_distance
@@ -240,6 +269,12 @@ def compute_tracking_metrics(data, target_distance=0.5, tracking_threshold=1.0):
     rmse_bearing = np.sqrt(np.mean(bearings**2))
     
     metrics = {
+        'success_rate': s_rate,
+        'collision_rate': c_rate,
+        'timeout_rate': t_rate,
+        'success_count': s_count,
+        'collision_count': c_count,
+        'timeout_count': t_count,
         'tracking_percentage': tracking_percentage,
         'rmse_distance': rmse_distance,
         'rmse_bearing': rmse_bearing,
@@ -263,6 +298,12 @@ def print_metrics_summary(data, target_distance=0.5):
     tracking_metrics = compute_tracking_metrics(data, target_distance)
     if tracking_metrics:
         print("\n--- Tracking Performance ---")
+        print(f"Success rate: {tracking_metrics['success_rate']:.2f}%")
+        print(f"Collision rate: {tracking_metrics['collision_rate']:.2f}%")
+        print(f"Timeout rate: {tracking_metrics['timeout_rate']:.2f}%")
+        print(f"Success count: {tracking_metrics['success_count']}")
+        print(f"Collision count: {tracking_metrics['collision_count']}")
+        print(f"Timeout count: {tracking_metrics['timeout_count']}"),
         print(f"Time of tracking: {tracking_metrics['tracking_percentage']:.2f}%")
         print(f"RMSE distance from target: {tracking_metrics['rmse_distance']:.4f} m")
         print(f"RMSE bearing angle: {tracking_metrics['rmse_bearing']:.4f} rad ({np.rad2deg(tracking_metrics['rmse_bearing']):.2f}°)")
