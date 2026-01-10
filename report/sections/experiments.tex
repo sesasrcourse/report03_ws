@@ -10,7 +10,7 @@ The simulation experiments are conducted using:
 \begin{itemize}
     \item Gazebo with TurtleBot3 Burger model
     \item Simulated LiDAR sensor (360° field of view)
-    \item Static and dynamic obstacle configurations
+    \item Static obstacle configurations
     \item Ground-truth odometry for pose estimation
     \item Dynamic goal generation through odometry messages
 \end{itemize}
@@ -21,12 +21,13 @@ Physical experiments are performed using:
 \begin{itemize}
     \item TurtleBot3 Burger robot 
     \item AprilTag as the moving target
+    \item Static and dynamic obstacle configurations
 \end{itemize}
 
-The real robot experiments are conducted in a laboratory environment with known obstacles (boxes, furniture) arranged to create navigation challenges. The target is moved manually while holding an AprilTag marker, creating dynamic goal positions for the robot to follow.
+The real robot experiments are conducted in a laboratory environment with movable obstacles, the target is moved manually while holding an AprilTag marker, creating dynamic goal positions for the robot to follow.
 
 \subsection{Evaluation Metrics}
-
+% TODO pensare se vogliamo specificare il modo con cui calcoliamo queste metriche
 To quantitatively assess the navigation system performance, the following metrics are recorded during experimental trials:
 
 \begin{itemize}
@@ -38,37 +39,45 @@ To quantitatively assess the navigation system performance, the following metric
 
 \subsection{Parameter Configuration}
 
-The DWA controller is configured with the following parameters, tuned through iterative testing in simulation:
+The DWA controller is configured with the parameters shown in Table~\ref{tab:dwa_params}, tuned through iterative testing in simulation and adapted for the real robot platform.
 
 \begin{table}[h]
 \centering
 \caption{DWA Controller Parameters}
 \label{tab:dwa_params}
-\begin{tabular}{lcc}
+\begin{tabular}{lccc}
 \hline
-\textbf{Parameter} & \textbf{Value} & \textbf{Unit} \\
+\textbf{Parameter} & \textbf{Simulation} & \textbf{Real} & \textbf{Unit} \\
 \hline
-Control frequency & 15 & Hz \\
-Simulation time& 2.0 & s \\
-Time granularity & 0.1 & s \\
-Linear velocity samples & 20 & - \\
-Angular velocity samples & 20 & - \\
-Goal distance tolerance & 0.2 & m \\
-Collision tolerance (obj) & 0.25 & m \\
-Collision tolerance (stop) & 0.5 & m \\
-Max linear velocity & 0.22 & m/s \\
-Max angular velocity & 2.84 & rad/s \\
-Max linear acceleration & 0.22 & m/s² \\
-Max angular acceleration & $\pi$ & rad/s² \\
-Robot radius & 0.2 & m \\
+Control frequency & 15 & 15 & Hz \\
+Simulation time& 2.0 & 2.0 & s \\
+Time granularity & 0.1 & 0.1 & s \\
+Linear velocity samples & 20 & 20 & - \\
+Angular velocity samples & 20 & 20 & - \\
+LiDAR angular sectors ($N_{ranges}$) & 20 & 20 & - \\
+Goal distance tolerance & 0.2 & 0.35 & m \\
+Collision tolerance (obj) & 0.5 & 0.5 & m \\
+Collision tolerance (stop) & 0.15 & 0.18 & m \\
+Max linear velocity & 0.22 & 0.22 & m/s \\
+Max angular velocity & 2.84 & 2.84 & rad/s \\
+Max linear acceleration & 0.22 & 0.22 & m/s² \\
+Max angular acceleration & $\pi$ & $\pi$ & rad/s² \\
+Robot radius & 0.2 & 0.2 & m \\
 \hline
-\multicolumn{3}{c}{\textit{Objective function weights}} \\
+\multicolumn{4}{c}{\textit{Objective function weights}} \\
 \hline
-$\alpha$ (heading) & 0.1 & - \\
-$\beta$ (velocity) & 0.2 & - \\
-$\gamma$ (obstacle) & 0.2 & - \\
-$\delta$ (target distance, Task 2b) & 0.1 & - \\
+$\alpha$ (heading) & 0.1 & 0.1 & - \\
+$\beta$ (velocity) & 0.2 & 0.2 & - \\
+$\gamma$ (obstacle) & 0.2 & 0.2 & - \\
+\hline
+\multicolumn{4}{c}{\textit{Task-specific parameters}} \\
+\hline
+Slowdown threshold (Task 2a) & 0.25 & 0.25 & m \\
+Slowdown weight (Task 2a) & 0.1 & 0.1 & - \\
+Target distance (Task 2b) & 0.3 & 0.3 & m \\
+$\delta$ (target distance weight, Task 2b) & 0.1 & 0.1 & - \\
 \hline
 \end{tabular}
 \end{table}
 
+\paragraph{Note on tolerance parameters:} The goal distance tolerance is used both in the objective function evaluation and as the actual termination condition to verify goal achievement. For obstacle avoidance, two distinct tolerances are employed: a higher value (collision tolerance for obj) is used in the objective function to discourage proximity to obstacles, while a lower value (collision tolerance for stop) serves as the safety threshold that triggers an immediate stop in case of imminent collision.

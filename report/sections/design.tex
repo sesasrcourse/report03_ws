@@ -28,10 +28,12 @@ The controller node establishes communication through the following main topics:
 \textbf{Publishers:}
 \begin{itemize}
     \item \texttt{/cmd\_vel} (Twist): Sends velocity commands to the robot
-    \item \texttt{/goal\_marker} (Marker): Visualizes the current goal in RViz
+    \item \texttt{/goal\_marker} (Marker): Used to visualize the current goal in RViz
     \item \texttt{/dwa\_feedback} (String): Provides navigation task feedback
     \item \texttt{/goal\_reached}, \texttt{/collision\_flag} (Bool): Publishes task status flags
     \item \texttt{/filter\_scan} (MarkerArray): Visualizes filtered LiDAR points
+    \item \texttt{/task\_status} (String): Publishes overall task status (e.g. "Goal", "Collision", "Timeout")
+    \item \texttt{/goal\_pose} (Point): Republishes the current goal position for visalization purposes (in odom frame)
 \end{itemize}
 
 \subsubsection{State Management}
@@ -50,12 +52,12 @@ The LiDAR data processing pipeline implements several filtering stages to ensure
 \begin{enumerate}
     \item \textbf{Range validation}: Invalid measurements (NaN, Inf) are handled by assigning maximum range (3.5 m) to avoid false obstacle detections
     \item \textbf{Distance filtering}: Only measurements within the effective range [0.12 m, 3.5 m] are considered for obstacle detection
-    \item \textbf{Angular sectoring}: The full 360° scan (could be less in real robot) is divided into $N_{ranges} = 20$ angular sectors to reduce computational load
+    \item \textbf{Angular sectoring}: The full 360° scan (could be less in real robot) is divided into $N_{ranges}$ angular sectors to reduce computational load
     \item \textbf{Minimum distance selection}: Within each sector, only the closest obstacle point is retained, representing the most critical obstacle in that direction
     \item \textbf{Coordinate transformation}: Range-bearing measurements are converted to Cartesian coordinates $(x, y)$ in the robot's reference frame
 \end{enumerate}
 
-This filtering approach reduces the number of obstacle points to 20, significantly improving computational performance while maintaining sufficient environmental representation for safe navigation.
+This filtering approach reduces the number of obstacle points to $N_{ranges}$, significantly improving computational performance while maintaining sufficient environmental representation for safe navigation.
 
 \subsection{Goal Management}
 
@@ -74,14 +76,14 @@ The goal manager implements dynamic target switching capabilities, allowing the 
     \begin{bmatrix} range \cdot \cos(bearing) \\ range \cdot \sin(bearing) \end{bmatrix}
 \end{equation}
 
-A timeout mechanism resets the goal if no landmark is detected, preventing the robot from pursuing outdated targets.
+The goal is deleted (\texttt{None}) if no landmark is detected, preventing the robot from pursuing outdated targets.
 
 \subsection{Safety Mechanisms}
 
 Multiple safety layers are implemented to ensure collision-free navigation:
 
 \begin{enumerate}
-    \item \textbf{Collision detection}: If any LiDAR measurement falls below the collision tolerance (0.25 m), the robot immediately stops and sets a collision flag. If the obstacle is no longer detected, navigation resumes.
+    \item \textbf{Collision detection}: If any LiDAR measurement falls below the collision tolerance, the robot immediately stops and sets a collision flag. If the obstacle is no longer detected, navigation resumes.
     \item \textbf{DWA trajectory scoring}: Trajectories that would bring the robot closer than $r_{robot} + d_{collision}$ (where $r_{robot} = 0.2$ m) to any obstacle receive a heavy penalty ($-100$) in the objective function
     \item \textbf{Timeout protection}: Navigation tasks exceeding 300 control steps are automatically terminated
     \item \textbf{Sensor validation}: Commands are only computed when both LiDAR data and a valid goal are available
@@ -92,7 +94,7 @@ Multiple safety layers are implemented to ensure collision-free navigation:
 The DWA controller generates trajectories by sampling the dynamic window of feasible velocities and evaluating them according to an objective function. Three variants are implemented:
 
 \subsubsection{Task 1: Original DWA}
-The standard objective function balances three terms:
+The standard objective function (hereafter referred to as \texttt{obj1}) balances three terms:
 \begin{equation}
     J = \alpha \cdot heading + \beta \cdot vel + \gamma \cdot dist_{obst}
 \end{equation}
@@ -105,15 +107,15 @@ where:
 \end{itemize}
 
 \subsubsection{Task 2a: Velocity Reduction Near Goal}
-An additional penalty term is introduced to slow down the robot when approaching the goal:
+This variant (hereafter referred to as \texttt{obj2a}) introduces an additional penalty term to slow down the robot when approaching the goal:
 \begin{equation}
     vel' = -v \cdot \left(1 - \frac{d_{goal}}{d_{threshold}}\right), \quad \text{if } d_{goal} < d_{threshold}
 \end{equation}
 
-where $d_{threshold} = 0.25$ m defines the activation range. The penalty increases linearly as the robot gets closer to the goal, effectively reducing the selected velocities in the final approach phase.
+where $d_{threshold}$ m defines the activation range. The penalty increases linearly as the robot gets closer to the goal, effectively reducing the selected velocities in the final approach phase.
 
 \subsubsection{Task 2b: Target Following}
-For dynamic target following, a distance maintenance term is added:
+For dynamic target following (hereafter referred to as \texttt{obj2b}), a distance maintenance term is added:
 \begin{equation}
     J = \alpha \cdot heading + \beta \cdot vel + \gamma \cdot dist_{obst} + \delta \cdot dist_{target}
 \end{equation}
@@ -123,14 +125,14 @@ The $dist_{target}$ term is computed as:
     dist_{target} = \exp\left(-\frac{|d_{actual} - d_{desired}|}{d_{desired}}\right)
 \end{equation}
 
-with $d_{desired} = 0.3$ m. Additional penalties (50\% reduction if $d < 0.5 \cdot d_{desired}$, 70\% if $d > 2.0 \cdot d_{desired}$) discourage getting too close or too far from the target, ensuring optimal visual tracking conditions.
+Additional penalties (50\% reduction if $d < 0.5 \cdot d_{desired}$, 70\% if $d > 2.0 \cdot d_{desired}$) discourage getting too close or too far from the target, ensuring optimal visual tracking conditions.
 
 \subsection{Control Loop Execution}
 
 The main control callback implements the following execution flow:
 
 \begin{enumerate}
-    \item Check goal reach condition: $\|goal_{robot}\| < d_{tol}$ (0.2 m)
+    \item Check goal reach condition: $\|goal_{robot}\| < d_{tol}$
     \item Validate sensor data availability and goal validity
     \item Check for collision, timeout, or goal reached conditions
     \item If all checks pass: compute velocity command using DWA
