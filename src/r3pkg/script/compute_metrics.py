@@ -43,6 +43,7 @@ def read_bag(bag, sim_flag):
     goal_time = []
     goal_data = []  # (x, y, theta)
     task_status = [] # GOAL, COLLISION, TIMEOUT
+    task_status_time = []
     
     for topic_name, msg, t in reader:
         if topic_name in ["/ground_truth", "/odom"]:
@@ -83,6 +84,7 @@ def read_bag(bag, sim_flag):
 
         elif topic_name == "/task_status":
             task_status.append(msg.data)
+            task_status_time.append(landmark_time[-1] if len(landmark_time) > 0 else 0)
 
 
     # Convert to numpy arrays
@@ -110,6 +112,7 @@ def read_bag(bag, sim_flag):
         'goal_time': np.array(goal_time),
         'goal_data': np.array(goal_data) if len(goal_data) > 0 else np.array([]),
         'task_status': np.array(task_status),
+        'task_status_time': np.array(task_status_time),
         'sim_flag': sim_flag
     }
 
@@ -118,6 +121,9 @@ def plot_trajectory(data, save_path_dir=None):
     pose_data = data['pose_data']
     goal_data = data['goal_data']
     sim_flag = data['sim_flag']
+    pose_time = data['pose_time']
+    task_status_time = data['task_status_time']
+    task_status = data['task_status']
     
     fig_name = f"{'sim' if sim_flag else 'real'}_trajectory"
     plt.figure(fig_name, figsize=(10, 10))
@@ -127,6 +133,37 @@ def plot_trajectory(data, save_path_dir=None):
     # Plot goal trajectory if available
     if len(goal_data) > 0:
         plt.plot(goal_data[:, 0], goal_data[:, 1], 'r-', linewidth=2, label='Goal trajectory')
+
+    event_styles = {
+        'Goal':      {'color': 'green',  'marker': '*', 's': 200, 'label': 'Goal Reached'},
+        'Collision': {'color': 'red',    'marker': 'X', 's': 150, 'label': 'Collision'},
+        'Timeout':   {'color': 'orange', 'marker': 'o', 's': 100, 'label': 'Timeout'}
+    }
+    
+    # We store found coordinates to plot them in batches (cleaner legend)
+    events_to_plot = {'Goal': [], 'Collision': [], 'Timeout': []}
+
+    for status, t_event in zip(task_status, task_status_time):
+        if status in events_to_plot:
+            # Find the index of the pose closest to this event time
+            # pose_time and t_event should both be in nanoseconds (integers)
+            idx = (np.abs(pose_time - t_event)).argmin()
+            
+            # Extract (x, y) at that moment
+            x, y = pose_data[idx, 0], pose_data[idx, 1]
+            events_to_plot[status].append((x, y))
+
+    # Actual plotting loop for markers
+    for status_type, coords in events_to_plot.items():
+        if len(coords) > 0:
+            coords = np.array(coords)
+            style = event_styles[status_type]
+            plt.scatter(coords[:, 0], coords[:, 1], 
+                        c=style['color'], 
+                        marker=style['marker'], 
+                        s=style['s'], 
+                        label=style['label'], 
+                        zorder=10) # High zorder ensures markers sit on top of lines
     
     plt.xlabel('x [m]')
     plt.ylabel('y [m]')
@@ -259,7 +296,8 @@ def compute_tracking_metrics(data, target_distance=0.5, tracking_threshold=1.0):
     
     # Time of tracking: percentage when target was detected
     #tracking_percentage = (len(distances) / len(landmark_data)) * 100
-    tracking_percentage = (len(goal_time) / len(landmark_time)) * 100
+    successful_frames = sum(1 for landmarks in landmark_data if len(landmarks) > 0)
+    tracking_percentage = (successful_frames / len(landmark_data)) * 100
     
     # RMSE of distance from target (compared to desired distance)
     distance_errors = distances - target_distance
@@ -352,8 +390,8 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Compute navigation metrics from rosbag data')
     parser.add_argument('--bag', help="Path to the rosbag file or directory")
     parser.add_argument('--sim', '-s', action='store_true', help="Use this for simulation data (reads /ground_truth)")
-    parser.add_argument('--target-distance', '-d', type=float, default=0.5, 
-                        help="Target distance from moving target (default: 0.5m)")
+    parser.add_argument('--target-distance', '-d', type=float, default=0.35, 
+                        help="Target distance from moving target (default: 0.35m)")
     parser.add_argument('--save-dir', help="Directory to save plots (default: current directory)")
     args = parser.parse_args()
     
