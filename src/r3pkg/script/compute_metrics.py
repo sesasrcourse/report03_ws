@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from rclpy.time import Time
 from tf_transformations import euler_from_quaternion
+from ament_index_python.packages import get_package_share_directory
+import re
 
 def read_bag(bag, sim_flag):
     """
@@ -121,11 +123,13 @@ def plot_trajectory(data, save_path_dir=None):
     pose_data = data['pose_data']
     goal_data = data['goal_data']
     sim_flag = data['sim_flag']
+    setting = data['setting']
+    obj_fun = data['obj_fun']
     pose_time = data['pose_time']
     task_status_time = data['task_status_time']
     task_status = data['task_status']
     
-    fig_name = f"{'sim' if sim_flag else 'real'}_trajectory"
+    fig_name = f"{setting}_trajectory"
     plt.figure(fig_name, figsize=(10, 10))
     
     plt.plot(pose_data[:, 0], pose_data[:, 1], 'b-', linewidth=2, label='Robot trajectory')
@@ -167,7 +171,7 @@ def plot_trajectory(data, save_path_dir=None):
     
     plt.xlabel('x [m]')
     plt.ylabel('y [m]')
-    plt.title(f'Robot Trajectory - {"Simulation" if sim_flag else "Real Robot"}')
+    plt.title(f'Robot Trajectory - {"Simulation" if sim_flag else "Real Robot"} - Objective Function {obj_fun}')
     plt.legend()
     plt.grid(True)
     plt.axis('equal')
@@ -183,17 +187,19 @@ def plot_cmd_signals(data, save_path_dir=None):
     cmd_time = data['cmd_time']
     cmd_data = data['cmd_data']
     sim_flag = data['sim_flag']
+    obj_fun = data['obj_fun']
+    setting = data['setting']
     
     # Convert time to seconds from start
     time_sec = (cmd_time - cmd_time[0]) / 1e9
     
-    fig_name = f"{'sim' if sim_flag else 'real'}_cmd_signals"
+    fig_name = f"{setting}_cmd"
     fig, (ax1, ax2) = plt.subplots(2, 1, num=fig_name, figsize=(12, 8), sharex=True)
     
     # Linear velocity
     ax1.plot(time_sec, cmd_data[:, 0], 'b-', linewidth=1.5)
     ax1.set_ylabel('Linear velocity v [m/s]')
-    ax1.set_title(f'Command Signals - {"Simulation" if sim_flag else "Real Robot"}')
+    ax1.set_title(f'Command Signals - {"Simulation" if sim_flag else "Real Robot"} - Objective Function {obj_fun}')
     ax1.grid(True)
     
     # Angular velocity
@@ -376,7 +382,9 @@ def print_metrics_summary(data, target_distance=0.5):
 
 
 def generate_all_plots(data, save_path_dir=None):
-    """Generate all plots for the navigation task"""
+    """Generate all plots for the navigation task
+        setting: str -> <r|s><1|2a|2b>
+    """
     print("\nGenerating plots...")
     
     plot_trajectory(data, save_path_dir)
@@ -386,39 +394,71 @@ def generate_all_plots(data, save_path_dir=None):
 
 
 if __name__=="__main__":
+    # find default img folder for save_dir
+    pkg_name = 'r3pkg'
+    ws_path = os.path.abspath(os.path.join(get_package_share_directory(pkg_name), '../../../../'))
+    rosbags_dir = os.path.join(ws_path, 'rosbags')
+    img_dir = os.path.join(ws_path, 'report/img')
+
+    bag_pattern = "^(r|s)(1|2a|2b)(_timeout|_static)?.*$"
+
     # ARGS PARSER
     parser = argparse.ArgumentParser(description='Compute navigation metrics from rosbag data')
-    parser.add_argument('--bag', help="Path to the rosbag file or directory")
-    parser.add_argument('--sim', '-s', action='store_true', help="Use this for simulation data (reads /ground_truth)")
+    parser.add_argument('--bag', help="Path to the rosbag file or directory", default=None)
+    # parser.add_argument('--sim', '-s', action='store_true', help="Use this for simulation data (reads /ground_truth)")
     parser.add_argument('--target-distance', '-d', type=float, default=0.35, 
                         help="Target distance from moving target (default: 0.35m)")
-    parser.add_argument('--save-dir', help="Directory to save plots (default: current directory)")
+    parser.add_argument('--save-dir', help="Directory to save plots (default: current directory)", default=img_dir)
     args = parser.parse_args()
     
-    sim_flag: bool = args.sim
-    target_distance: float = args.target_distance
-    save_dir = args.save_dir
+    bag = args.bag
+    bags = []
+    if bag:
+        bags.append(bag)
+    else:
+        # if bag not provided use our known list of bags taken from real experiments and simulations
+        bags.append(os.path.join(rosbags_dir, 's1'))
+        bags.append(os.path.join(rosbags_dir, 's2a'))
+        bags.append(os.path.join(rosbags_dir, 's2b'))
+        bags.append(os.path.join(rosbags_dir, 'r1'))
+        bags.append(os.path.join(rosbags_dir, 'r1_static'))
+        bags.append(os.path.join(rosbags_dir, 'r1_timeout'))
+        bags.append(os.path.join(rosbags_dir, 'r2a'))
+        bags.append(os.path.join(rosbags_dir, 'r2b'))
 
-    # Single bag analysis
-    if args.bag is not None:
+    for bag in bags:
+        # for each bag, control that the name of the bag respects a specific parttern (bag_pattern)
+        match: re.Match | None = re.search(bag_pattern, os.path.basename(bag))
+        if not match:
+            raise NameError("Bag provided not with correct format <r|s><obs_func>_[timeout|static]_<datetime>")
+        else:
+            sim_flag = True if match.group(1) == 's' else False
+            sim_real_label = match.group(1)
+            obj_fun = match.group(2)
+            additional_conditions = match.group(3) # for timeout or static
+            setting = sim_real_label+obj_fun+(additional_conditions if additional_conditions is not None else '')
+        target_distance: float = args.target_distance
+        save_dir = args.save_dir
+        
         print(f"\n{'='*60}")
-        print(f"Processing bag: {args.bag}")
+        print(f"Processing bag: {bag}")
         print(f"{'='*60}\n")
         
-        data = read_bag(args.bag, sim_flag)
-        
+        data: dict = read_bag(bag, sim_flag)
+        data["setting"] = setting
+        data["obj_fun"] = obj_fun
+
         # Print metrics summary
         print_metrics_summary(data, target_distance)
         
         # Generate plots
         generate_all_plots(data, save_dir)
         
-        plt.show()
-        exit()
+    # plt.show()
     
     # Batch processing (if no specific bag provided)
-    print("No bag specified. Please provide a bag path using --bag argument.")
-    print("\nExample usage:")
-    print("  Simulation: python compute_metrics.py --bag /path/to/sim_bag --sim")
-    print("  Real robot: python compute_metrics.py --bag /path/to/real_bag")
-    print("  With save:  python compute_metrics.py --bag /path/to/bag --sim --save-dir /path/to/output")
+    # print("No bag specified. Please provide a bag path using --bag argument.")
+    # print("\nExample usage:")
+    # print("  Simulation: python compute_metrics.py --bag /path/to/sim_bag --sim")
+    # print("  Real robot: python compute_metrics.py --bag /path/to/real_bag")
+    # print("  With save:  python compute_metrics.py --bag /path/to/bag --sim --save-dir /path/to/output")
