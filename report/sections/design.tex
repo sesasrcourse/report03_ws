@@ -94,6 +94,7 @@ Multiple safety layers are implemented to ensure collision-free navigation:
 The DWA controller generates trajectories by sampling the dynamic window of feasible velocities and evaluating them according to an objective function. Three variants are implemented:
 
 \subsubsection{Task 1: Original DWA}
+\label{sssec:dwa_cost}
 The standard objective function (hereafter referred to as \texttt{obj1}) balances three terms:
 \begin{equation}
     J = \alpha \cdot heading + \beta \cdot vel + \gamma \cdot dist_{obst}
@@ -107,6 +108,7 @@ where:
 \end{itemize}
 
 \subsubsection{Task 2a: Velocity Reduction Near Goal}
+\label{sssec:task2a}
 This variant (hereafter referred to as \texttt{obj2a}) introduces an additional penalty term to slow down the robot when approaching the goal:
 \begin{equation}
     vel' = -v \cdot \left(1 - \frac{d_{goal}}{d_{threshold}}\right), \quad \text{if } d_{goal} < d_{threshold}
@@ -115,6 +117,7 @@ This variant (hereafter referred to as \texttt{obj2a}) introduces an additional 
 where $d_{threshold}$ m defines the activation range. The penalty increases linearly as the robot gets closer to the goal, effectively reducing the selected velocities in the final approach phase.
 
 \subsubsection{Task 2b: Target Following}
+\label{sssec:task2b}
 For dynamic target following (hereafter referred to as \texttt{obj2b}), a distance maintenance term is added:
 \begin{equation}
     J = \alpha \cdot heading + \beta \cdot vel + \gamma \cdot dist_{obst} + \delta \cdot dist_{target}
