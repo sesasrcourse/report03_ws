@@ -8,3 +8,22 @@
 % ■ Plot the command signal profiles (v,w) obtained with the controllers.
 % ■ Comment on the results.
 % ○ Compute the same metrics of Task 1-2 whenever it is possible to use /odom instead of the ground truth position of the robot.
+
+In Task 3, the modified DWA algorithm developed in Task 2 was deployed on a real TurtleBot to follow a moving target detected through visual landmarks in laboratory.
+
+\singlepic{r1_trajectory.png}{Trajectory of the robot in Task 3}{r1_tr}{0.6}
+\singlepic{r1_cmd.png}{Linear Velocity and Angular Velocity Commands }{r1_cmd}{0.6}
+
+\singlepic{r2a_trajectory.png}{Trajectory of the robot in Task 3}{r2a_tr}{0.6}
+\singlepic{r2a_cmd.png}{Linear Velocity and Angular Velocity Commands }{r2a_cmd}{0.6}
+
+\singlepic{r2b_trajectory.png}{Trajectory of the robot in Task 3}{r2b_tr}{0.6}
+\singlepic{r2b_cmd.png}{Linear Velocity and Angular Velocity Commands }{r2b_cmd}{0.6}
+
+
+%% TODO : add image of the metrics.
+%% EXAMPLE OF ANALYSIS:
+%The performance metrics obtained from real robot experiments show a clear degradation compared to simulation results. Both the tracking time rate and the goal success rate are substantially lower, indicating that the robot frequently loses the target or fails to complete the following task successfully. This behavior is particularly evident during sharp turns of the target robot, where the follower struggles to maintain visual contact.
+%The RMSE of the distance to the target remains relatively low, suggesting that when the robot is able to track the target, it maintains a reasonable following distance. However, the bearing RMSE increases significantly, confirming difficulties in keeping the target centered in the robot’s field of view. This limitation is primarily caused by perception inaccuracies and delays in the landmark detection pipeline.
+%Obstacle-related metrics show larger average distances compared to simulation, mainly due to the less cluttered real-world environment. However, minimum obstacle distances occasionally drop to critical values, emphasizing the need for more conservative safety margins when operating on real hardware.
+%The velocity command profiles are less jittery than in simulation but still contain large and abrupt changes, especially during tracking loss or recovery phases. These unrealistic velocity jumps highlight one of the main limitations of the current DWA implementation, namely the lack of explicit modeling of the robot’s acceleration constraints. This mismatch between the controller’s assumptions and the real robot dynamics is a major contributor to the reduced performance observed in real-world experiments.

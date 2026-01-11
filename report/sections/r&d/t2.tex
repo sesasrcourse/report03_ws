@@ -12,3 +12,19 @@
 %     ■ Time of tracking [%]: how long have you been chasing the moving target correctly? Measure the amount of time (percentage over the entire duration of the experiment) during which you did not lose the target robot. Losing the tracking means you are NOT following the target anymore.
 %     ■ Root Mean Square Error (RMSE) of the target distance and bearing from the target moving robot, considering as optimal value the distance you define in the objective of the DWA and 0 for the bearing angle.
 %     ■ Overall average and minimum distance [m] from the obstacles, using the /scan lidar data.
+
+In Task 2, the DWA algorithm was modified by changing the original objective function under the indication (see Subsubsection~\ref{sssec:task2a} and Subsubsection~\ref{sssec:task2b}). This was done for the first case to slow down the robot when getting close to the goal, and for the second case to maintain a desired distance from a moving target.
+
+
+\singlepic{s2a_trajectory.png}{Trajectory of the robot in Task 2}{s2a_tr}{0.6}
+\singlepic{s2a_cmd.png}{Linear Velocity and Angular Velocity Commands }{s2a_cmd}{0.6}
+
+\singlepic{s2b_trajectory.png}{Trajectory of the robot in Task 2}{s2b_tr}{0.6}
+\singlepic{s2b_cmd.png}{Linear Velocity and Angular Velocity Commands }{s2b_cmd}{0.6}
+
+%% TODO : add image of the metrics.
+%% EXAMPLE OF ANALYSIS:
+%The results demonstrate an improvement compared to Task 1, particularly in the RMSE of the distance to the target. The inclusion of the distance term encourages the robot to keep a more stable and appropriate separation from the moving goal throughout the simulation. The bearing RMSE also shows a slight improvement, suggesting that maintaining a larger distance from the target facilitates more stable visual tracking.
+%The tracking time rate and goal success rate remain high, although a small reduction in goal success rate is observed. This trade-off can be attributed to the increased complexity of the cost function, which introduces additional constraints on the robot’s behavior.
+%Obstacle avoidance performance improves as well, as reflected by the increased mean obstacle distance. This indicates that the robot selects trajectories that are safer and more conservative with respect to surrounding obstacles. The minimum obstacle distance remains similar to Task 1, again likely influenced by unavoidable narrow sections of the environment.
+%The velocity profiles still present jitter and, in some instances, sharp spikes in both linear and angular velocities. These spikes may result from conflicting objectives in the cost function, especially when the robot simultaneously tries to regulate distance, avoid obstacles, and maintain target tracking. As in Task 1, this behavior is acceptable in simulation but could be problematic in real-world applications.
