@@ -98,7 +98,7 @@ class ControllerNode(Node):
             self.goal_pose = None
             return
         self.last_landmark_ts = self.get_clock().now().nanoseconds
-        # if self.first_time_tag_seen:
+
         self.first_time_tag_seen = False
         self.controller_step = 0
         self.goal_reached = False
@@ -116,8 +116,6 @@ class ControllerNode(Node):
         theta = self.state[2]
         goal_x_odom = self.state[0] + goal_x_robot * np.cos(theta) - goal_y_robot * np.sin(theta)
         goal_y_odom = self.state[1] + goal_x_robot * np.sin(theta) + goal_y_robot * np.cos(theta)
-        
-        # self.get_logger().info(f"GOAL: robot=({goal_x_robot:.2f},{goal_y_robot:.2f}) -> odom=({goal_x_odom:.2f},{goal_y_odom:.2f})")
         
         # Visualization Marker in global frame (odom)
         goal = Marker() 
@@ -168,12 +166,6 @@ class ControllerNode(Node):
 
         dist_to_goal = np.linalg.norm(self.goal_pose)  if self.goal_pose is not None else float('inf')
 
-        # self.get_logger().info(
-        #     f"goal_pose: {self.goal_pose}\n"
-        #     f"goal_reached: {self.goal_reached}\n"
-        #     f"collision_flag: {self.collision_flag}\n"
-        # )
-
         # Provide intermediate task feedback
         if self.global_ctrl_step % self.feedback_rate == 0: 
             feedback_msg = String()
@@ -197,12 +189,6 @@ class ControllerNode(Node):
             self.publish_stop_cmd()
             return
         
-        # # Check landmark timeout (only for real robot, not simulation)
-        # if not self.simulation:
-        #     # If landmark not seen for >1/6 Hz seconds, reset goal
-        #     if self.get_clock().now().nanoseconds - self.last_landmark_ts > 1e9/6.0:
-        #         self.goal_pose = None
-
         # Check if goal pose is set
         if self.goal_pose is None:
             self.publish_stop_cmd()
@@ -325,10 +311,8 @@ class ControllerNode(Node):
                 obstacles.append((x, y))
        
         self.obstacles = np.array(obstacles)
-        # self.get_logger().info(f'OBSTACLES detected: {self.obstacles}')
 
         # Implement a safety mechanism to stop the robot and avoid collisions.
-        # TODO check if this works
         if np.any(np.array(min_ranges) <= self.collision_stop_tol):
             self.get_logger().info("COLLISION DETECTED: STOP")
             self.collision_flag = True

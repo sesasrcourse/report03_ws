@@ -33,7 +33,7 @@ class DWA():
         self.w_samples = w_samples
 
         # DWA mode selector
-        self.obj_fun = obj_fun  # 'original', 'task2_a' (slow near goal), 'task2_b' (target following)
+        self.obj_fun = obj_fun  # '1', '2a' (slow near goal), '2b' (target following)
         
         # Task 2_a parameters
         self.slowdown_threshold = slowdown_threshold
@@ -52,52 +52,6 @@ class DWA():
         self.max_num_steps = 300
         self.feedback_rate = 50
         self.obst_tolerance = 0.5
-
-    # def go_to_pose(self, goal_pose):
-    #     """
-    #     Assign a target goal to the DWA controller.
-    #     Compute commands until goal is reached.
-    #     Provide intermediate feedback on the navigation task.
-    #     """
-    #     if goal_pose is list:
-    #         goal_pose = np.array(goal_pose)
-
-    #     success = False
-    #     dist_to_goal = np.linalg.norm(self.robot.pose[0:2] - goal_pose)
-
-    #     print("Initial distance to goal: ", dist_to_goal)
-    #     print("Initial Robot pose: ", self.robot.pose)
-
-    #     steps = 1
-    #     while steps <= self.max_num_steps:
-    #         # 1. Check if Goal reached
-    #         dist_to_goal = np.linalg.norm(self.robot.pose[0:2] - goal_pose)
-    #         if dist_to_goal < self.goal_dist_tol:
-    #             success = True
-    #             print("Goal reached!")
-    #             break
-
-    #         # 2. Get new observations for obstacles is needed
-    #         # no lidar used here
-
-    #         # 3. Compute command for the robot with DWA controller
-    #         u = self.compute_cmd(goal_pose, self.robot.pose, self.obstacles)
-
-    #         # 4. Send the command or update the robot pose
-    #         pose = self.robot.update_state(u, self.dt)
-            
-    #         # 5. Provide intermediate task feedback
-    #         if steps % self.feedback_rate == 0:
-    #             dist_to_goal = np.linalg.norm(self.robot.pose[0:2] - goal_pose)
-    #             print("Current distance to goal ", dist_to_goal, " at step ", steps)
-    #             print("Current Robot pose: ", pose)
-
-    #         steps += 1
-
-    #     if steps > self.max_num_steps:
-    #         print("Timeout! Goal not reached.")
-
-    #     return success, self.robot.trajectory
     
     def compute_cmd(self, goal_pose, robot_state, obstacles):
         """
