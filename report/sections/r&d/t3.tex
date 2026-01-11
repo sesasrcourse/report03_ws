@@ -9,7 +9,16 @@
 % ■ Comment on the results.
 % ○ Compute the same metrics of Task 1-2 whenever it is possible to use /odom instead of the ground truth position of the robot.
 
-In Task 3, the modified DWA algorithm developed in Task 2 was deployed on a real TurtleBot to follow a moving target detected through visual landmarks in laboratory.
+
+In Task 3, the modified DWA algorithm developed in previous tasks had been deployed on a real TurtleBot3 to follow a moving target detected through visual landmarks in a laboratory environment. Three different experimental scenarios were conducted to assess the robustness of the controller under varying conditions. In this real scenarios, performance metrics are not directly comparable, as the robot trajectories differ and the target was manually moved by a human operator, preventing a consistent and accurate quantitative comparison, which a reproducible setting could have yielded.
+
+A mutual property of all experiments is that the robot is able to compute candidate velocities when the dynamic goal is placed meters far from it. All trajectories in shown in figures \ref{fig:r1_tr}, \ref{fig:r2a_tr}, \ref{fig:r2b_tr}, prove a reliable local planning algorithm, independently of the additional terms used in the variant objective functions.
+
+The \texttt{/cmd\_vel} linear velocity profiles in plots \ref{fig:r1_cmd}, \ref{fig:r2a_cmd} and \ref{fig:r2b_cmd} give some insights on the differences introduced by the use of the additional terms in the objective functions. Rewarding slower velocities for when the robot approaches the goal as in objective function 2a results in a lower peaks (up to circa 0.22m/s) compared to the ones in objective functions 1 and 2b. The lineal velocities chosen by the adoption of objective function 2b have more frequent peaks - though always lower than those in obj. func. 1 - also when the robot is close to the goal, as a constant distance with it is required to be mantained.
+
+It can be observed in \autoref{tab:metrics} that the success rate in the third real-world experiment is lower (4.08\%). This outcome is primarily due to the fact that, during the experiment, the robot did not remain sufficiently close to the target to trigger the goal-reached condition, while a greater emphasis was placed on testing collision-related behaviors.
+
+For future analysis, a reproducible dynamic goal trajectory (and velocities) could be employed, in order to having a common ground goal.
 
 \multipics{Task 3 - Objective Function 1}{0.5}{
     {r1_trajectory.png}{Trajectory of the robot}{r1_tr},
