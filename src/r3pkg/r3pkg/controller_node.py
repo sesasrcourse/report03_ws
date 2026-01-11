@@ -69,6 +69,9 @@ class ControllerNode(Node):
             max_ang_vel = self.max_ang_vel, # rad/s 
             min_ang_vel = self.min_ang_vel, # rad/s 
             radius = self.radius, # m
+            weight_slowdown = self.weight_slowdown,
+            weight_target_dist= self.weight_target_dist,
+            target_distance = self.target_distance
         )
 
         # PUBS & SUBS & TIMERS
@@ -420,6 +423,14 @@ class ControllerNode(Node):
         self.declare_parameter('radius',  0.2)
         self.radius = self.get_parameter('radius').get_parameter_value().double_value
 
+        self.declare_parameter('weight_slowdown', 0.1)
+        self.weight_slowdown = self.get_parameter('weight_slowdown').get_parameter_value().double_value
+
+        self.declare_parameter('weight_target_dist', 0.1)
+        self.weight_target_dist = self.get_parameter('weight_target_dist').get_parameter_value().double_value
+
+        self.declare_parameter('target_distance', 0.3)
+        self.target_distance = self.get_parameter('target_distance').get_parameter_value().double_value
 
         self.get_logger().info("-----NODE PARAMS (as self.*)-----\n"
                                 f"- use_sim_time: {self.use_sim_time}\t({type(self.use_sim_time)})\n"
@@ -442,6 +453,9 @@ class ControllerNode(Node):
                                 f"- max_ang_vel: {self.max_ang_vel}\t({type(self.max_ang_vel)})\n"
                                 f"- min_ang_vel: {self.min_ang_vel}\t({type(self.min_ang_vel)})\n"
                                 f"- radius: {self.radius}\t({type(self.radius)})\n"
+                                f"- weight_slowdown: {self.weight_slowdown}\t({type(self.weight_slowdown)})\n"
+                                f"- weight_target_dist: {self.weight_target_dist}\t({type(self.weight_target_dist)})\n"
+                                f"- target_distance: {self.target_distance}\t({type(self.target_distance)})\n"
                                "----------")
 
 def main(args=None):

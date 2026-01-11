@@ -341,7 +341,7 @@ def compute_tracking_metrics(data, target_distance=0.5, tracking_threshold=1.0):
         tracking_percentage = 100.0 #TODO: discuss whether this makes sense time of tracking
     
     # RMSE of distance from target (compared to desired distance)
-    distance_errors = distances - target_distance
+    distance_errors = np.clip(distances - target_distance, a_min=0, a_max=None)
     rmse_distance = np.sqrt(np.mean(distance_errors**2))
     
     # RMSE of bearing (compared to 0, i.e., directly ahead)
