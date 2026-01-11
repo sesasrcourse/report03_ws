@@ -7,6 +7,7 @@ from rclpy.time import Time
 from tf_transformations import euler_from_quaternion
 from ament_index_python.packages import get_package_share_directory
 import re, csv, math
+from functools import reduce
 
 def read_bag(bag, sim_flag):
     """
@@ -162,7 +163,7 @@ def plot_trajectory(data, save_path_dir=None):
 
     event_styles = {
         'Goal':      {'color': 'green',  'marker': '*', 's': 200, 'label': 'Goal Reached'},
-        'Collision': {'color': 'red',    'marker': 'X', 's': 150, 'label': 'Collision'},
+        'Collision': {'color': 'purple',    'marker': 'X', 's': 150, 'label': 'Collision'},
         'Timeout':   {'color': 'orange', 'marker': 'o', 's': 100, 'label': 'Timeout'}
     }
     
@@ -442,6 +443,7 @@ if __name__=="__main__":
     ws_path = os.path.abspath(os.path.join(get_package_share_directory(pkg_name), '../../../../'))
     rosbags_dir = os.path.join(ws_path, 'rosbags')
     img_dir = os.path.join(ws_path, 'report/img')
+    sections_dir = os.path.join(ws_path, 'report/sections')
 
     bag_pattern = "^(r|s)(1|2a|2b)(_timeout|_static)?.*$"
 
@@ -469,7 +471,7 @@ if __name__=="__main__":
         bags.append(os.path.join(rosbags_dir, 'r2a'))
         bags.append(os.path.join(rosbags_dir, 'r2b'))
 
-    metrics_list = []
+    metrics_list: list[dict] = []
     for bag in bags:
         # for each bag, control that the name of the bag respects a specific parttern (bag_pattern)
         match: re.Match | None = re.search(bag_pattern, os.path.basename(bag))
@@ -506,8 +508,72 @@ if __name__=="__main__":
         writer.writeheader()  # Write the dictionary keys as the header
         for metrics in metrics_list:
             writer.writerow(metrics)
+
+    with open(os.path.join(sections_dir, 'metrics_table.tex'), 'w', newline='') as f:
+
+        settings: list[str] = list(map(lambda m: m.get('setting', 'NO_SETTING'), metrics_list))
+        headers = '\\textbf{Metric}'
+        for setting in settings:
+            headers += ' & \\textbf{'+setting.replace('_', '\\_')+'}'
+        headers += '\\\\\n'
             
-        
+        start = r'\begin{table}[h]' + '\n' +\
+            r'\centering'+ '\n' +\
+            r'\caption{Metrics}'+ '\n' +\
+            r'\label{tab:metrics}'+ '\n' +\
+            r'\begin{tabular}{l'+ f'{"c"*(len(settings))}'+'}\n' +\
+            r'\hline'+ '\n' +\
+            f'{headers}' +\
+            r'\hline'+'\n'
+        end = r'\hline' + '\n' +\
+            r'\end{tabular}' + '\n' +\
+            r'\end{table}' + '\n'
+
+        metric_keys = [
+                'success_rate','collision_rate','timeout_rate',
+                'tracking_percentage',
+                'rmse_distance','rmse_bearing',
+                'avg_distance','avg_bearing','avg_dist_obst','min_dist_obst']
+        metric_names = []
+        for key in metric_keys:
+            name = reduce(lambda x, y: x+' '+y, map(lambda x: x.capitalize(), key.split('_')), )
+            metric_names.append(name)
+
+        rows = ''
+        for key, name in zip(metric_keys, metric_names):
+            row = f'{name}' 
+            
+            for elem in list(map(lambda m: m.get(key), metrics_list)):
+                if isinstance(elem, float):
+                    row += f' & {elem:.3f}'
+                else:
+                    row += f' & {elem}'
+                if key.endswith('rate'):
+                    row+=r'\%'
+                    
+            row+='\\\\\n'
+            rows+=row
+
+        f.write(start+rows+end)
+
+            
+
+        exit()
+
+# setting,success_rate,collision_rate,timeout_rate,tracking_percentage,rmse_distance,rmse_bearing,avg_distance,avg_bearing,avg_dist_obst,min_dist_obst,
+
+# setting
+# success_rate
+# collision_rate
+# timeout_rate
+# tracking_percentage
+# rmse_distance
+# rmse_bearing
+# avg_distance
+# avg_bearing
+# avg_dist_obst
+# min_dist_obst,
+
     # plt.show()
     
     # Batch processing (if no specific bag provided)
