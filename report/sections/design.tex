@@ -28,13 +28,15 @@ The controller node establishes communication through the following main topics:
 \textbf{Publishers:}
 \begin{itemize}
     \item \texttt{/cmd\_vel} (Twist): Sends velocity commands to the robot
-    \item \texttt{/goal\_marker} (Marker): Used to visualize the current goal in RViz
+    \item \texttt{/goal\_marker} (Marker): Used to visualize the current goal in RViz (see \autoref{fig:filter_scan})
     \item \texttt{/dwa\_feedback} (String): Provides navigation task feedback
     \item \texttt{/goal\_reached}, \texttt{/collision\_flag} (Bool): Publishes task status flags
-    \item \texttt{/filter\_scan} (MarkerArray): Visualizes filtered LiDAR points
+    \item \texttt{/filter\_scan} (MarkerArray): Visualizes filtered LiDAR points (see \autoref{fig:filter_scan})
     \item \texttt{/task\_status} (String): Publishes overall task status (e.g. "Goal", "Collision", "Timeout")
     \item \texttt{/goal\_pose} (Point): Republishes the current goal position for visalization purposes (in odom frame)
 \end{itemize}
+
+\singlepic{filter_scan.png}{Rviz visualization of \texttt{/filter\_scan} (blue spheres) and \texttt{/goal\_marker} (green cube) topics}{filter_scan}{0.5}
 
 \subsubsection{State Management}
 The node maintains two distinct state representations:
