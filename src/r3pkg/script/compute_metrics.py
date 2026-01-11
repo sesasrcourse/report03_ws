@@ -226,7 +226,7 @@ def plot_cmd_signals(data, save_path_dir=None):
     ax1.grid(True)
     
     # Angular velocity
-    ax2.plot(time_sec, cmd_data[:, 1], 'r-', linewidth=1.5)
+    ax2.semilogy(time_sec, cmd_data[:, 1], 'r-', linewidth=1.5)
     ax2.set_xlabel('Time [s]')
     ax2.set_ylabel('Angular velocity ω [rad/s]')
     ax2.grid(True)
@@ -544,12 +544,10 @@ if __name__=="__main__":
             row = f'{name}' 
             
             for elem in list(map(lambda m: m.get(key), metrics_list)):
-                if isinstance(elem, float):
-                    row += f' & {elem:.3f}'
+                if key.endswith('rate') or key.endswith('percentage'):
+                    row+=f' & {elem:.2f}' + r' \%'
                 else:
-                    row += f' & {elem}'
-                if key.endswith('rate'):
-                    row+=r'\%'
+                    row += f' & {elem:.3f}'
                     
             row+='\\\\\n'
             rows+=row
