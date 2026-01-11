@@ -13,18 +13,20 @@
 %     ■ Root Mean Square Error (RMSE) of the target distance and bearing from the target moving robot, considering as optimal value the distance you define in the objective of the DWA and 0 for the bearing angle.
 %     ■ Overall average and minimum distance [m] from the obstacles, using the /scan lidar data.
 
-In Task 2, the DWA algorithm was modified by changing the original objective function under the indication (see Subsubsection~\ref{sssec:task2a} and Subsubsection~\ref{sssec:task2b}). This was done for the first case to slow down the robot when getting close to the goal, and for the second case to maintain a desired distance from a moving target.
+In Task 2, the DWA algorithm is modified by changing the original objective function under the indication (see Subsubsection~\ref{sssec:task2a} and Subsubsection~\ref{sssec:task2b}). This is done for the first case to slow down the robot when getting close to the goal, and for the second case to maintain a desired distance from a moving target.
 
+\subsubsection{Task 2a: Velocity Reduction Near Goal}
 
-\singlepic{s2a_trajectory.png}{Trajectory of the robot in Task 2}{s2a_tr}{0.6}
-\singlepic{s2a_cmd.png}{Linear Velocity and Angular Velocity Commands }{s2a_cmd}{0.6}
+\multipics{Task 2a}{0.5}{{s2a_trajectory.png}{Trajectory of the robot}{s2a_tr}, {s2a_cmd.png}{Linear Velocity and Angular Velocity Commands}{s2a_cmd}}
 
-\singlepic{s2b_trajectory.png}{Trajectory of the robot in Task 2}{s2b_tr}{0.6}
-\singlepic{s2b_cmd.png}{Linear Velocity and Angular Velocity Commands }{s2b_cmd}{0.6}
+The modified cost function with velocity modulation (Task 2a) maintains the same high success and tracking rates as Task 1, as shown in Table~\ref{tab:metrics}. The trajectory in Figure~\ref{fig:s2a_tr} exhibits similar following behavior, with the robot maintaining continuous pursuit of the dynamic goal. The slight increase in distance RMSE (0.316~m vs 0.313~m) and minimal change in bearing RMSE indicate that the velocity term does not significantly affect distance regulation. We suppose that this behavior is due to our parameter setting, which does not heavily penalize higher velocities near the goal. Although we do not notice a remarkable difference in the distances metrics from the goal, the robot's speed profile seem to be affected by the new term.
 
-%% TODO : add image of the metrics.
-%% EXAMPLE OF ANALYSIS:
-%The results demonstrate an improvement compared to Task 1, particularly in the RMSE of the distance to the target. The inclusion of the distance term encourages the robot to keep a more stable and appropriate separation from the moving goal throughout the simulation. The bearing RMSE also shows a slight improvement, suggesting that maintaining a larger distance from the target facilitates more stable visual tracking.
-%The tracking time rate and goal success rate remain high, although a small reduction in goal success rate is observed. This trade-off can be attributed to the increased complexity of the cost function, which introduces additional constraints on the robot’s behavior.
-%Obstacle avoidance performance improves as well, as reflected by the increased mean obstacle distance. This indicates that the robot selects trajectories that are safer and more conservative with respect to surrounding obstacles. The minimum obstacle distance remains similar to Task 1, again likely influenced by unavoidable narrow sections of the environment.
-%The velocity profiles still present jitter and, in some instances, sharp spikes in both linear and angular velocities. These spikes may result from conflicting objectives in the cost function, especially when the robot simultaneously tries to regulate distance, avoid obstacles, and maintain target tracking. As in Task 1, this behavior is acceptable in simulation but could be problematic in real-world applications.
+The velocity profiles in Figure~\ref{fig:s2a_cmd} show comparable characteristics to Task 1, with oscillations in both linear and angular velocities. The velocity modulation term appears to have limited impact on smoothness, as the optimization still prioritizes instantaneous trajectory scoring over velocity continuity.
+
+\subsubsection{Task 2b: Target Following with Distance Regulation}
+
+\multipics{Task 2b}{0.5}{{s2b_trajectory.png}{Trajectory of the robot}{s2b_tr}, {s2b_cmd.png}{Linear Velocity and Angular Velocity Commands}{s2b_cmd}}
+
+The addition of the distance regulation term (Task 2b) shows marginally different behavior compared to the baseline. Table~\ref{tab:metrics} indicates a slight increase in both distance and bearing RMSE, suggesting that the added constraint introduces minor trade-offs in tracking precision. However, success and tracking rates remain at 100\%, confirming robust navigation performance.
+
+The trajectory in Figure~\ref{fig:s2b_tr} demonstrates consistent following behavior, while the velocity commands in Figure~\ref{fig:s2b_cmd} maintain similar oscillatory characteristics. Overall, both Task 2 variants achieve comparable performance to Task 1 in simulation, indicating that the controlled environment with perfect sensing minimizes the practical benefits of the modified cost functions. The true value of these modifications is expected to emerge in real-world scenarios where sensor noise and environmental uncertainty are present.

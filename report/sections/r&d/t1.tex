@@ -15,8 +15,7 @@
 
 In Task 1, the Dynamic Window Approach (DWA) algorithm was tested in a Gazebo simulation environment using the original cost function (see Subsubsection~\ref{sssec:dwa_cost}). The robot was required to follow a moving goal while avoiding static obstacles in the environment.
 
-\singlepic{s1_trajectory.png}{Trajectory of the robot in Task 1}{s1_tr}{0.6}
-\singlepic{s1_cmd.png}{Linear Velocity and Angular Velocity Commands }{s1_cmd}{0.6}
+\multipics{Task 1}{0.5}{{s1_trajectory.png}{Trajectory of the robot}{s1_tr}, {s1_cmd.png}{Linear Velocity and Angular Velocity Commands}{s1_cmd}}
 
 The results shown in Table~\ref{tab:metrics} demonstrate effective navigation performance with the baseline DWA implementation. The robot achieved a 100\% success rate across all trials, maintaining continuous tracking of the moving target throughout the entire experiment duration. As visible in Figure~\ref{fig:s1_tr}, the robot trajectory closely follows the dynamic goal path, indicating proper heading alignment through the cost function.
 
