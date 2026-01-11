@@ -512,6 +512,8 @@ if __name__=="__main__":
     with open(os.path.join(sections_dir, 'metrics_table.tex'), 'w', newline='') as f:
 
         settings: list[str] = list(map(lambda m: m.get('setting', 'NO_SETTING'), metrics_list))
+        settings.remove('r1_static')
+        settings.remove('r1_timeout')
         headers = '\\textbf{Metric}'
         for setting in settings:
             headers += ' & \\textbf{'+setting.replace('_', '\\_')+'}'
@@ -543,7 +545,9 @@ if __name__=="__main__":
         for key, name in zip(metric_keys, metric_names):
             row = f'{name}' 
             
-            for elem in list(map(lambda m: m.get(key), metrics_list)):
+            for (elem, sett) in list(map(lambda m: (m.get(key), m.get('setting')), metrics_list)):
+                if sett.endswith('static') or sett.endswith('timeout'):
+                    continue
                 if key.endswith('rate') or key.endswith('percentage'):
                     row+=f' & {elem:.2f}' + r' \%'
                 else:
