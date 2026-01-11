@@ -28,13 +28,12 @@ The real robot experiments are conducted in a laboratory environment with movabl
 
 \subsection{Evaluation Metrics}
 \label{ssec:metrics}
-% TODO pensare se vogliamo specificare il modo con cui calcoliamo queste metriche
 To quantitatively assess the navigation system performance, the following metrics are recorded during experimental trials:
 
 \begin{itemize}
     \item \textbf{Success rate}: Percentage of trials where the robot successfully reached the goal without collisions or timeouts
     \item \textbf{Time of tracking}: amount of time during which the robot did not lose the target. 
-    \item \textbf{Root Mean Square Error (RMSE)}: of the target distance and bearing from the target moving robot, considering as optimal value the distance we define in the objective function of the DWA and 0 for the bearing angle. 
+    \item \textbf{Root Mean Square Error (RMSE)} of the target distance and bearing from the target moving robot, considering as optimal value the distance we define in the objective function of the DWA and 0 for the bearing angle. 
     \item \textbf{Average and Minimum distance to obstacles} using the /scan LiDAR data. 
 \end{itemize}
 

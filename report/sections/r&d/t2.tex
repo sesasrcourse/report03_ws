@@ -1,6 +1,5 @@
 \subsection{Task 2}
-
-% TODO 
+ 
 % ● Results [Task 1 - 2]: Run your navigation algorithm in the simulation environment.
 %   ○ Record the /ground_truth, /scan, /camera/landmarks, and /cmd_vel topics, then
 %   ○ Make plots comparing the position and orientation reported in the three topics
@@ -23,7 +22,7 @@ In Task 2, the DWA algorithm is modified by changing the original objective func
 }
 {s2a}
 
-The modified cost function with velocity modulation (Task 2a) maintains the same high success and tracking rates as Task 1, as shown in \autoref{tab:metrics}. The trajectory in \autoref{fig:s2a_tr} exhibits similar following behavior, with the robot maintaining continuous pursuit of the dynamic goal. The increase in distance RMSE (0.473~m vs 0.313~m) and in bearing RMSE indicate that the velocity term does significantly affect distance regulation. We suppose that this behavior is due to constraining the robot to adopt decreasing velocities when it approaches the dynamic goal, letting this latter proceed at a higher speed. The new term affects the robot's speed profile as indicated in \autoref{fig:s2a_cmd}. Its velocity profiles show comparable characteristics to Task 1 (\autoref{fig:s1_cmd}), with oscillations in both linear and angular velocities. The use of Objective Function 2a results into general lower computed linear velocities.
+The modified cost function with velocity modulation (Task 2a) maintains the same high success and tracking rates as Task 1, as shown in \autoref{tab:metrics}. The trajectory in \autoref{fig:s2a_tr} exhibits similar following behavior, with the robot maintaining continuous pursuit of the dynamic goal. The increase in distance RMSE (0.473~m vs 0.313~m) and in bearing RMSE indicate that the velocity term does significantly affect distance regulation. We suppose that this behavior is due to constraining the robot to adopt decreasing velocities when it approaches the dynamic goal, allowing the target to move farther ahead. The new term affects the robot's speed profile as indicated in \autoref{fig:s2a_cmd}. Its velocity profiles show comparable characteristics to Task 1 (\autoref{fig:s1_cmd}), with oscillations in both linear and angular velocities. The use of Objective Function 2a results into general lower computed linear velocities.
 
 
 \subsubsection{Task 2b: Target Following with Distance Regulation}

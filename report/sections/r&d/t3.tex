@@ -1,5 +1,4 @@
 \subsection{Task 3}
-% TODO 
 % Results [Task 3]: Run your navigation algorithm on the real robot. 
 %   ○ Record the /odom, /camera/landmarks, /scan, and /cmd_vel topics. 
 % ○ Make plots comparing the position and orientation reported in the two topics. For /odom you can subtract the first pose to all the other poses to align to the origin. 
@@ -10,15 +9,15 @@
 % ○ Compute the same metrics of Task 1-2 whenever it is possible to use /odom instead of the ground truth position of the robot.
 
 
-In Task 3, the modified DWA algorithm developed in previous tasks had been deployed on a real TurtleBot3 to follow a moving target detected through visual landmarks in a laboratory environment. Three different experimental scenarios were conducted to assess the robustness of the controller under varying conditions. In this real scenarios, performance metrics are not directly comparable, as the robot trajectories differ and the target was manually moved by a human operator, preventing a consistent and accurate quantitative comparison, which a reproducible setting could have yielded.
+In Task 3, the modified DWA algorithm developed in previous tasks has been deployed on a real TurtleBot3 to follow a moving target detected through visual landmarks in a laboratory environment. Three different experimental scenarios were conducted to assess the robustness of the controller under varying conditions. In this real scenarios, performance metrics are not directly comparable, as the robot trajectories differ and the target was manually moved by a human operator, preventing a consistent and accurate quantitative comparison, which a reproducible setting could have yielded.
 
-A mutual property of all experiments is that the robot is able to compute candidate velocities when the dynamic goal is placed meters far from it. All trajectories in shown in figures \ref{fig:r1_tr}, \ref{fig:r2a_tr}, \ref{fig:r2b_tr}, prove a reliable local planning algorithm, independently of the additional terms used in the variant objective functions.
+A mutual property of all experiments is that the robot is able to compute candidate velocities when the dynamic goal is placed meters far from it. All trajectories in shown in Figures \ref{fig:r1_tr}, \ref{fig:r2a_tr}, \ref{fig:r2b_tr}, prove a reliable local planning algorithm, independently of the additional terms used in the variant objective functions.
 
-The \texttt{/cmd\_vel} linear velocity profiles in plots \ref{fig:r1_cmd}, \ref{fig:r2a_cmd} and \ref{fig:r2b_cmd} give some insights on the differences introduced by the use of the additional terms in the objective functions. Rewarding slower velocities for when the robot approaches the goal as in objective function 2a results in a lower peaks (up to circa 0.22m/s) compared to the ones in objective functions 1 and 2b. The lineal velocities chosen by the adoption of objective function 2b have more frequent peaks - though always lower than those in obj. func. 1 - also when the robot is close to the goal, as a constant distance with it is required to be mantained.
+The \texttt{/cmd\_vel} linear velocity profiles in plots \ref{fig:r1_cmd}, \ref{fig:r2a_cmd} and \ref{fig:r2b_cmd} give some insights on the differences introduced by the use of the additional terms in the objective functions. Rewarding slower velocities for when the robot approaches the goal as in objective function 2a results in a lower peaks (up to circa 0.22m/s) compared to the ones in objective functions 1 and 2b. The linear velocities chosen by the adoption of objective function 2b have more frequent peaks - though always lower than those in obj. func. 1 - also when the robot is close to the goal, as a constant distance with it is required to be maintained.
 
 It can be observed in \autoref{tab:metrics} that the success rate in the third real-world experiment is lower (4.08\%). This outcome is primarily due to the fact that, during the experiment, the robot did not remain sufficiently close to the target to trigger the goal-reached condition, while a greater emphasis was placed on testing collision-related behaviors.
 
-For future analysis, a reproducible dynamic goal trajectory (and velocities) could be employed, in order to having a common ground goal.
+For future analysis, a reproducible dynamic goal trajectory (and velocities) could be employed, in order to have a common ground goal.
 
 \multipics{Task 3 - Objective Function 1}{0.5}{
     {r1_trajectory.png}{Trajectory of the robot}{r1_tr},
@@ -35,10 +34,3 @@ For future analysis, a reproducible dynamic goal trajectory (and velocities) cou
     {r2b_cmd.png}{Linear Velocity and Angular Velocity Commands }{r2b_cmd}
 }{r2b}
 
-
-%% TODO : add image of the metrics.
-%% EXAMPLE OF ANALYSIS:
-%The performance metrics obtained from real robot experiments show a clear degradation compared to simulation results. Both the tracking time rate and the goal success rate are substantially lower, indicating that the robot frequently loses the target or fails to complete the following task successfully. This behavior is particularly evident during sharp turns of the target robot, where the follower struggles to maintain visual contact.
-%The RMSE of the distance to the target remains relatively low, suggesting that when the robot is able to track the target, it maintains a reasonable following distance. However, the bearing RMSE increases significantly, confirming difficulties in keeping the target centered in the robot’s field of view. This limitation is primarily caused by perception inaccuracies and delays in the landmark detection pipeline.
-%Obstacle-related metrics show larger average distances compared to simulation, mainly due to the less cluttered real-world environment. However, minimum obstacle distances occasionally drop to critical values, emphasizing the need for more conservative safety margins when operating on real hardware.
-%The velocity command profiles are less jittery than in simulation but still contain large and abrupt changes, especially during tracking loss or recovery phases. These unrealistic velocity jumps highlight one of the main limitations of the current DWA implementation, namely the lack of explicit modeling of the robot’s acceleration constraints. This mismatch between the controller’s assumptions and the real robot dynamics is a major contributor to the reduced performance observed in real-world experiments.
