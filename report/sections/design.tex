@@ -87,7 +87,7 @@ Multiple safety layers are implemented to ensure collision-free navigation:
 \begin{enumerate}
     \item \textbf{Collision detection}: If any LiDAR measurement falls below the collision tolerance, the robot immediately stops and sets a collision flag. If the obstacle is no longer detected, navigation resumes.
     \item \textbf{DWA trajectory scoring}: Trajectories that would bring the robot closer than $r_{robot} + d_{collision}$ (where $r_{robot} = 0.2$ m) to any obstacle receive a heavy penalty ($-100$) in the objective function
-    \item \textbf{Timeout protection}: Navigation tasks exceeding 300 control steps are automatically terminated
+    \item \textbf{Timeout protection}: When the robot cannot see the goal anymore or cannot reach it - unless the goal dynamically changes - for more than 300 control steps (circa 20 $s$), a timeout flag is triggered.
     \item \textbf{Sensor validation}: Commands are only computed when both LiDAR data and a valid goal are available
 \end{enumerate}
 
