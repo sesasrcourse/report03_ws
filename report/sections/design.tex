@@ -67,14 +67,14 @@ The goal manager implements dynamic target switching capabilities, allowing the 
 
 \textbf{Simulation mode:} Goals are received as odometry messages and transformed from the global frame to the robot's local frame through rotation by $-\theta$:
 \begin{equation}
-    \begin{bmatrix} x_{robot} \\ y_{robot} \end{bmatrix} = 
+    \begin{bmatrix} x_{goal,robot} \\ y_{goal,robot} \end{bmatrix} = 
     \begin{bmatrix} \cos(-\theta) & -\sin(-\theta) \\ \sin(-\theta) & \cos(-\theta) \end{bmatrix}
-    \begin{bmatrix} x_{goal} - x_{robot,global} \\ y_{goal} - y_{robot,global} \end{bmatrix}
+    \begin{bmatrix} x_{goal,global} - x_{robot,global} \\ y_{goal,global} - y_{robot,global} \end{bmatrix}
 \end{equation}
 
 \textbf{Real robot mode:} AprilTag detections provide range-bearing measurements that are directly converted to robot-frame coordinates:
 \begin{equation}
-    \begin{bmatrix} x_{goal} \\ y_{goal} \end{bmatrix} = 
+    \begin{bmatrix} x_{goal,robot} \\ y_{goal,robot} \end{bmatrix} = 
     \begin{bmatrix} range \cdot \cos(bearing) \\ range \cdot \sin(bearing) \end{bmatrix}
 \end{equation}
 
@@ -137,7 +137,7 @@ Additional penalties (50\% reduction if $d < 0.5 \cdot d_{desired}$, 70\% if $d 
 The main control callback implements the following execution flow:
 
 \begin{enumerate}
-    \item Check goal reach condition: $\|goal_{robot}\| < d_{tol}$
+    \item Check goal reach condition: $\|[x_{goal,robot} \quad y_{goal,robot}]\| < d_{tol}$
     \item Validate sensor data availability and goal validity
     \item Check for collision, timeout, or goal reached conditions
     \item If all checks pass: compute velocity command using DWA

@@ -33,7 +33,11 @@ The modified cost function with velocity modulation (Task 2a) maintains the same
 }
 {s2b}
 
-The addition of the distance regulation term (Task 2b) shows different behavior compared to the default objective function 1. In particular, \autoref{tab:metrics} indicates an increase in distance RMSE, showing worse performances in the attempt of minimizing the distance with the goal; the reason behind this can be found in the DWA algorithm discarding high velocities in favor of the new additional term. The bearing RMSE is not remarkably affected, suggesting that the added constraint introduces minor trade-offs in tracking precision. However, success and tracking rates remain at 100\%, confirming robust navigation performance.
+The addition of the distance regulation term (Task 2b) causes a different behavior compared to the default objective function 1, as can be seen in \autoref{tab:metrics} by an increase in distance RMSE. This is due to the DWA prioritizing the maintenance of the desired distance from the goal when the robot is close, penalizing high velocities that could create deviations from that target distance and consequently making the overall motion slower.
+The bearing RMSE is not remarkably affected, suggesting that the added constraint introduces minor trade-offs in tracking precision. However, success and tracking rates remain at 100\%, confirming robust navigation performance.
+
+
+%worse performances in the attempt of minimizing the distance with the goal; the reason behind this can be found in the DWA algorithm discarding high velocities in favor of the new additional term. The bearing RMSE is not remarkably affected, suggesting that the added constraint introduces minor trade-offs in tracking precision. However, success and tracking rates remain at 100\%, confirming robust navigation performance.
 
 The trajectory in \autoref{fig:s2b_tr} demonstrates consistent following behavior, while the velocity commands in \autoref{fig:s2b_cmd} maintain similar oscillatory characteristics. 
 
